@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Deck Master — art sheet</title>
+<style>
+  body { background: #050c17; color: #bcc3c8; font: 12px ui-monospace, monospace; margin: 16px; }
+  canvas { image-rendering: pixelated; display: block; }
+  .row { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 18px; }
+  .cell { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .deck { background: #3f4246; padding: 8px; }
+</style>
+</head>
+<body>
+<h3>Aircraft (spread / folded, 1x and 4x)</h3>
+<div id="aircraft"></div>
+<h3>Props &amp; crew (4x)</h3>
+<div id="props" class="row"></div>
+<script type="module" src="./art.ts"></script>
+</body>
+</html>

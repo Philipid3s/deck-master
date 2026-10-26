@@ -1,0 +1,2416 @@
+/* Deck Master — chrome styled after specifications/pixel art decks.png */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #050c17;
+  --panel: #0a1524;
+  --panel-alt: #0d1b2c;
+  --frame: #4b5e77;
+  --frame-dim: #243447;
+  --divider: #1c2a3c;
+  --text: #bcc3c8;
+  --text-dim: #71818f;
+  --text-bright: #e6edf2;
+
+  --crew: #3361a5;
+  --aircraft: #5b9831;
+  --system: #e8ad12;
+  --support: #7a4298;
+  --elevator: #f1c506;
+  --stairs: #c07a2a;
+  --alert: #c0392b;
+  --good: #7fae31;
+  --warn: #e8ad12;
+
+  --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 34px 30px 1fr 34px;
+}
+
+/* ---------------------------------------------------------------- top bar */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--frame-dim);
+  letter-spacing: 0.06em;
+}
+
+.topbar .ship {
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.14em;
+}
+
+.topbar .day {
+  color: var(--elevator);
+  font-weight: 600;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.tempo-group {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--frame-dim);
+}
+
+.tempo-group button {
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--frame-dim);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.tempo-group button:last-child {
+  border-right: none;
+}
+
+.tempo-group button:hover {
+  color: var(--text-bright);
+}
+
+.tempo-group button.active {
+  background: var(--elevator);
+  color: #10161c;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------- main */
+
+.main {
+  display: grid;
+  grid-template-columns: 1fr 268px;
+  /* minmax(0, 1fr) keeps the row from being grown by its content: the deck
+     canvas carries an intrinsic pixel size, and an auto row would size to it
+     and overflow the shell, hiding the bottom bar. */
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--frame-dim);
+}
+
+/* Absolute so the canvas's own width/height attributes can never feed back
+   into the layout and push the stage past the bottom of the window. */
+#deck-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Deck caption, laid out like the left column of the concept art. */
+.deck-caption {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 10px 48px 10px 12px;
+  /* A soft backing so the list stays legible over a zoomed-in deck. */
+  background: linear-gradient(90deg, rgba(5, 12, 23, 0.82) 60%, rgba(5, 12, 23, 0));
+  pointer-events: none;
+  text-shadow: 0 1px 3px #000;
+}
+
+.deck-caption .num {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.14em;
+}
+
+.deck-caption .name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--system);
+  letter-spacing: 0.16em;
+  margin-top: -2px;
+}
+
+.deck-caption ol {
+  margin: 7px 0 0;
+  padding-left: 15px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  max-width: 250px;
+}
+
+.stage-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  font-size: 10px;
+  color: var(--text-dim);
+  pointer-events: none;
+  letter-spacing: 0.05em;
+}
+
+/* Hover tooltip over rooms, crew and aircraft. */
+.tooltip {
+  position: absolute;
+  z-index: 30;
+  min-width: 158px;
+  max-width: 250px;
+  padding: 7px 9px;
+  background: rgba(5, 12, 23, 0.96);
+  border: 1px solid var(--frame);
+  pointer-events: none;
+  font-size: 11px;
+  line-height: 1.55;
+  display: none;
+}
+
+.tooltip.show {
+  display: block;
+}
+
+.tooltip .tip-title {
+  color: var(--text-bright);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  margin-bottom: 4px;
+}
+
+.tooltip .tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-dim);
+}
+
+.tooltip .tip-row span:last-child {
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------- sidebar */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: var(--bg);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.panel {
+  border: 1px solid var(--frame-dim);
+  background: var(--panel);
+}
+
+.panel > .panel-head {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--frame-dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--text-bright);
+}
+
+.panel > .panel-body {
+  padding: 7px 8px;
+}
+
+#minimap-canvas {
+  display: block;
+  width: 100%;
+  height: 196px;
+}
+
+/* Legend grid, straight from the art's legend block. */
+.legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.legend .item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend .sw {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Status readout, matching the art's bottom-right block. */
+.readout .stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2.5px 0;
+  font-size: 11px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.stat-label {
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  color: var(--text-bright);
+  font-weight: 600;
+  text-align: right;
+}
+
+.stat-value.good {
+  color: var(--good);
+}
+
+.stat-value.bad {
+  color: var(--alert);
+}
+
+.stat-value.warn {
+  color: var(--warn);
+}
+
+.stat-value.gold {
+  color: var(--elevator);
+}
+
+.readout .divider {
+  height: 1px;
+  background: var(--divider);
+  margin: 5px 0;
+}
+
+/* Bars */
+
+.bar {
+  height: 5px;
+  background: #16202c;
+  border: 1px solid var(--frame-dim);
+  overflow: hidden;
+  flex: 1;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--good);
+  transition: width 0.25s ease;
+}
+
+.attr-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+  font-size: 11px;
+}
+
+.attr-label {
+  width: 88px;
+  flex: 0 0 88px;
+  color: var(--text-dim);
+}
+
+.attr-value {
+  width: 24px;
+  flex: 0 0 24px;
+  text-align: right;
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------- bottom bar */
+
+.bottombar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--frame-dim);
+  padding: 0 10px;
+  /* Positioned so the shell chrome always paints above the stage. */
+  position: relative;
+  z-index: 5;
+}
+
+.bottombar .metric {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 14px 0 0;
+  margin-right: 14px;
+  border-right: 1px solid var(--frame-dim);
+  height: 20px;
+  font-size: 11px;
+}
+
+.bottombar .metric .k {
+  color: var(--text-dim);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+}
+
+.bottombar .metric .v {
+  color: var(--text-bright);
+  font-weight: 700;
+}
+
+.bottombar .spacer {
+  flex: 1;
+}
+
+/* Buttons */
+
+.btn {
+  background: #12202f;
+  border: 1px solid var(--frame-dim);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.btn:hover:not(:disabled) {
+  background: #1b3047;
+  border-color: var(--frame);
+  color: var(--text-bright);
+}
+
+.btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--elevator);
+  border-color: var(--elevator);
+  color: #10161c;
+  font-weight: 700;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #ffd83a;
+  border-color: #ffd83a;
+  color: #10161c;
+}
+
+.btn.danger {
+  border-color: #6d2a24;
+  color: #e08a80;
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: #2a1210;
+  border-color: var(--alert);
+}
+
+.btn.wide {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.btn-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  border: 1px solid currentColor;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.badge.gold {
+  color: var(--elevator);
+}
+
+.badge.red {
+  color: var(--alert);
+}
+
+.pill {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  background: #16202c;
+  border: 1px solid var(--frame-dim);
+  color: var(--text-dim);
+}
+
+/* ------------------------------------------------------- context panel */
+
+.context {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  background: rgba(6, 14, 25, 0.975);
+  border-left: 1px solid var(--frame);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.18s ease;
+  z-index: 20;
+}
+
+.context.open {
+  transform: translateX(0);
+}
+
+.context-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--frame-dim);
+}
+
+.context-head .titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.context-head .t1 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.05em;
+}
+
+.context-head .t2 {
+  font-size: 10.5px;
+  color: var(--system);
+  letter-spacing: 0.08em;
+  margin-top: 1px;
+}
+
+.context-head .t3 {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.context-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 9px 10px 14px;
+}
+
+.close-x {
+  background: none;
+  border: 1px solid var(--frame-dim);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: var(--mono);
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  padding: 0;
+  flex: 0 0 20px;
+}
+
+.close-x:hover {
+  color: var(--text-bright);
+  border-color: var(--frame);
+}
+
+.section-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--text-dim);
+  margin: 13px 0 5px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.section-title:first-child {
+  margin-top: 0;
+}
+
+.note {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 4px 0;
+}
+
+.list {
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.list .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2.5px 0;
+  border-bottom: 1px solid rgba(28, 42, 60, 0.6);
+}
+
+.list .row:last-child {
+  border-bottom: none;
+}
+
+.list .row.clickable {
+  cursor: pointer;
+}
+
+.list .row.clickable:hover {
+  background: #12202f;
+}
+
+.list .row .name {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list .row .meta {
+  color: var(--text-dim);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+
+/* Airframe sprites in the panels: the deck's own pixel art at a whole-number
+   scale, drawn with hard edges. Natural size, so pixels stay square. */
+.plan-art {
+  display: block;
+  margin: 6px auto 8px;
+  max-width: 100%;
+  image-rendering: pixelated;
+}
+
+.plan-art.small {
+  margin: 4px auto 6px;
+}
+
+/* Aircrew cell in the air tasking order: name over a dimmer detail line. */
+.crew-cell {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+
+.crew-cell .meta {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+/* ------------------------------------------------------------- overlays */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 12, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.modal {
+  width: min(720px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--frame);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+}
+
+.modal.wide {
+  width: min(1000px, 95vw);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--frame-dim);
+}
+
+.modal-head .mt {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-bright);
+}
+
+.modal-body {
+  padding: 13px;
+  overflow-y: auto;
+}
+
+.modal-foot {
+  padding: 10px 13px;
+  border-top: 1px solid var(--frame-dim);
+  display: flex;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+/* Event cards — the carrier stays visible behind them (spec section 51). */
+
+.event-stack {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 30px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  transition: right 0.18s ease;
+}
+
+.event-stack > * {
+  pointer-events: auto;
+}
+
+/* The day's decisions sit side by side under the ship rather than over it,
+   so the deck is framed above them and stays fully visible (spec 51). */
+.ec-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.ec-row .event-card {
+  flex: 1 1 0;
+  max-width: 470px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+/* Slide clear when the contextual panel opens, rather than stacking on it. */
+.context.open ~ .event-stack {
+  right: 352px;
+}
+
+.event-stack::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ec-toggle {
+  align-self: flex-end;
+  background: rgba(6, 14, 25, 0.975);
+  border: 1px solid var(--frame-dim);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.ec-toggle:hover {
+  color: var(--text-bright);
+  border-color: var(--frame);
+}
+
+.event-card {
+  background: rgba(6, 14, 25, 0.975);
+  border: 1px solid var(--frame);
+  border-left: 3px solid var(--system);
+}
+
+.event-card.emergency {
+  border-left-color: var(--alert);
+}
+
+.event-card .ec-head {
+  padding: 7px 10px 5px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.event-card .ec-cat {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--text-dim);
+}
+
+.event-card.emergency .ec-cat {
+  color: var(--alert);
+}
+
+.event-card .ec-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.event-card .ec-body {
+  padding: 7px 10px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.event-card .ec-choices {
+  padding: 0 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.choice {
+  text-align: left;
+  background: #12202f;
+  border: 1px solid var(--frame-dim);
+  color: var(--text);
+  font-family: var(--mono);
+  padding: 6px 9px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.choice:hover {
+  background: #1b3047;
+  border-color: var(--frame);
+}
+
+.choice .cl {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-bright);
+  display: block;
+}
+
+.choice .ch {
+  font-size: 10px;
+  color: var(--text-dim);
+  display: block;
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+/* Roster table */
+
+.filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+input[type='text'],
+select {
+  background: #0d1b2c;
+  border: 1px solid var(--frame-dim);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 7px;
+}
+
+input[type='text']:focus,
+select:focus {
+  outline: none;
+  border-color: var(--frame);
+}
+
+table.roster {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+table.roster th {
+  text-align: left;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  padding: 5px 7px;
+  border-bottom: 1px solid var(--frame-dim);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+table.roster th:hover {
+  color: var(--text-bright);
+}
+
+table.roster td {
+  padding: 4px 7px;
+  border-bottom: 1px solid rgba(28, 42, 60, 0.55);
+  white-space: nowrap;
+}
+
+table.roster tbody tr {
+  cursor: pointer;
+}
+
+table.roster tbody tr:hover {
+  background: #12202f;
+}
+
+.st-working {
+  color: var(--good);
+}
+
+.st-training {
+  color: var(--crew);
+}
+
+.st-resting {
+  color: var(--text-dim);
+}
+
+.st-injured,
+.st-sick {
+  color: var(--alert);
+}
+
+.st-leave {
+  color: var(--support);
+}
+
+/* Cards used by missions, upgrades and recruitment */
+
+.cards {
+  display: grid;
+  gap: 9px;
+}
+
+.card {
+  border: 1px solid var(--frame-dim);
+  background: var(--panel-alt);
+  padding: 10px 11px;
+}
+
+.card.selectable:hover {
+  border-color: var(--frame);
+}
+
+.card .ct {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.card .ct .n {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.04em;
+  flex: 1;
+}
+
+.card .stars {
+  color: var(--elevator);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.card .desc {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  line-height: 1.55;
+  margin-bottom: 7px;
+}
+
+.reqs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 2px 12px;
+  font-size: 10.5px;
+  margin-bottom: 7px;
+}
+
+.req {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.req.met .rv {
+  color: var(--good);
+}
+
+.req.unmet .rv {
+  color: var(--alert);
+}
+
+.req .rl {
+  color: var(--text-dim);
+}
+
+.rewards {
+  display: flex;
+  gap: 14px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.rewards b {
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
+/* Daily summary */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 11px;
+}
+
+.summary-block .sb-title {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--system);
+  border-bottom: 1px solid var(--divider);
+  padding-bottom: 3px;
+  margin-bottom: 5px;
+}
+
+.summary-notes {
+  margin-top: 13px;
+  font-size: 10.5px;
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+
+.summary-notes .n {
+  padding: 2px 0 2px 9px;
+  border-left: 2px solid var(--frame-dim);
+  margin-bottom: 2px;
+}
+
+.summary-notes .n.bad {
+  border-left-color: var(--alert);
+  color: #d99c93;
+}
+
+.summary-notes .n.good {
+  border-left-color: var(--good);
+  color: #a8c97a;
+}
+
+.outcome-banner {
+  padding: 9px 11px;
+  margin-bottom: 12px;
+  border: 1px solid var(--frame);
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  font-size: 13px;
+}
+
+.outcome-banner.good {
+  border-color: var(--good);
+  color: var(--good);
+  background: rgba(91, 152, 49, 0.08);
+}
+
+.outcome-banner.bad {
+  border-color: var(--alert);
+  color: #e08a80;
+  background: rgba(192, 57, 43, 0.08);
+}
+
+/* Scrollbars */
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: #08111c;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #223449;
+  border: 2px solid #08111c;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #33506e;
+}
+
+/* Title screen */
+
+.title-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.title-screen h1 {
+  font-size: 46px;
+  letter-spacing: 0.3em;
+  margin: 0;
+  color: var(--text-bright);
+  font-weight: 700;
+}
+
+.title-screen .sub {
+  color: var(--system);
+  letter-spacing: 0.34em;
+  font-size: 12px;
+  margin-bottom: 26px;
+}
+
+.title-screen .blurb {
+  max-width: 470px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  line-height: 1.7;
+  margin-bottom: 26px;
+}
+
+.title-screen .seed-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* ------------------------------------------------------- air tasking order */
+
+.topbar .phase {
+  color: var(--text-dim);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+}
+
+.duty-picker {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.duty-btn {
+  background: #12202f;
+  border: 1px solid var(--frame-dim);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  padding: 2px 5px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.duty-btn:hover:not(:disabled) {
+  border-color: var(--frame);
+  color: var(--text-bright);
+}
+
+/* A duty this airframe is good at, for a mission that rewards it. */
+.duty-btn.useful {
+  border-color: #2f5f3a;
+  color: var(--good);
+}
+
+.duty-btn.active {
+  color: #10161c;
+  font-weight: 700;
+  border-color: transparent;
+}
+
+.duty-btn.unusable,
+.duty-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+table.roster.tasking td {
+  vertical-align: middle;
+}
+
+table.roster.tasking td:first-child {
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------- carrier status */
+
+/* The ship's place in the mission cycle is the single most important piece
+   of state on screen: it decides what the player is allowed to do today. */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  height: 30px;
+  border-bottom: 1px solid var(--frame-dim);
+  background: var(--panel-alt);
+  border-left: 4px solid var(--frame);
+  letter-spacing: 0.1em;
+  font-size: 11px;
+}
+
+.statusbar .sb-label {
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.2em;
+}
+
+.statusbar .sb-detail {
+  color: var(--text-dim);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+}
+
+.statusbar .sb-note {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+/* Phase progress pips: outbound -> on station -> inbound */
+.statusbar .sb-track {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.statusbar .pip {
+  width: 22px;
+  height: 5px;
+  background: #16202c;
+  border: 1px solid var(--frame-dim);
+}
+
+.statusbar .pip.done {
+  background: var(--frame);
+  border-color: var(--frame);
+}
+
+.statusbar .pip.active {
+  border-color: currentColor;
+  background: currentColor;
+}
+
+/* Status-specific accents. */
+.statusbar.st-port {
+  border-left-color: var(--good);
+  color: var(--good);
+}
+
+.statusbar.st-outbound {
+  border-left-color: var(--crew);
+  color: #6f9fd8;
+}
+
+.statusbar.st-onstation {
+  border-left-color: var(--elevator);
+  color: var(--elevator);
+}
+
+.statusbar.st-inbound {
+  border-left-color: var(--support);
+  color: #a97fd0;
+}
+
+/* A blocking banner inside the development modal when the ship is at sea. */
+.at-sea-banner {
+  padding: 9px 11px;
+  margin-bottom: 12px;
+  border: 1px solid var(--warn);
+  border-left: 4px solid var(--warn);
+  background: rgba(232, 173, 18, 0.08);
+  color: var(--warn);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.at-sea-banner b {
+  color: var(--text-bright);
+  letter-spacing: 0.1em;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Deployment orders and debrief
+   --------------------------------------------------------------------------- */
+
+.objective {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 10.5px;
+  padding: 3px 0;
+  color: var(--text-dim);
+}
+
+.objective.primary {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.objective .obj-mark {
+  color: var(--frame);
+}
+
+.objective.met .obj-mark,
+.objective.met .obj-value {
+  color: var(--good);
+}
+
+.objective.primary .obj-mark {
+  color: var(--system);
+}
+
+.objective.primary.met .obj-mark {
+  color: var(--good);
+}
+
+.objective .obj-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.debrief-verdict {
+  text-align: center;
+  padding: 14px 10px 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--frame);
+}
+
+.debrief-verdict.good {
+  border-color: var(--good);
+  background: rgba(91, 152, 49, 0.08);
+}
+
+.debrief-verdict.bad {
+  border-color: var(--alert);
+  background: rgba(192, 57, 43, 0.08);
+}
+
+.debrief-stars {
+  font-size: 30px;
+  letter-spacing: 0.2em;
+  color: var(--elevator);
+}
+
+.debrief-verdict.bad .debrief-stars {
+  color: var(--alert);
+}
+
+.debrief-grade {
+  margin-top: 4px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--text-bright);
+  text-transform: uppercase;
+}
+
+.sound-toggle {
+  min-width: 96px;
+}
+
+/* ---------------------------------------------------------------------------
+   Guided first day
+   --------------------------------------------------------------------------- */
+
+.tut-card {
+  position: fixed;
+  z-index: 200;
+  width: 340px;
+  background: rgba(6, 14, 25, 0.98);
+  border: 1px solid var(--elevator);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+  padding: 12px 14px 10px;
+}
+
+.tut-card.hidden,
+.tut-ring.hidden {
+  display: none;
+}
+
+.tut-step {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--text-dim);
+}
+
+.tut-title {
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--elevator);
+}
+
+.tut-body {
+  margin-top: 7px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.tut-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tut-wait {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--elevator);
+  animation: tut-pulse 1.4s ease-in-out infinite;
+}
+
+/* The ring dims everything else without blocking clicks to the target. */
+.tut-ring {
+  position: fixed;
+  z-index: 199;
+  border: 2px solid var(--elevator);
+  box-shadow: 0 0 0 9999px rgba(2, 6, 12, 0.42);
+  pointer-events: none;
+  animation: tut-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes tut-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Objective states: judged on the last day, so on track or at risk until then. */
+.objective.st-ontrack .obj-mark,
+.objective.st-done .obj-mark,
+.objective.st-done .obj-value {
+  color: var(--good);
+}
+
+.objective.st-atrisk .obj-mark,
+.objective.st-atrisk .obj-value {
+  color: var(--warn);
+}
+
+.objective.st-failed .obj-mark,
+.objective.st-failed .obj-value {
+  color: var(--alert);
+}
+
+/* ---------------------------------------------------------------------------
+   Watch bill
+   --------------------------------------------------------------------------- */
+
+.watch-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 38px auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 10px;
+  padding: 2px 0;
+}
+
+.watch-head {
+  color: var(--text-dim);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--divider);
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+.watch-row .w-dept {
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.06em;
+}
+
+.watch-row .w-fat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.watch-row .w-fat .bar {
+  flex: 1;
+}
+
+.watch-row .w-num,
+.watch-row .w-rest {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.w-seg {
+  display: flex;
+}
+
+.w-btn {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+  width: 28px;
+  padding: 2px 0;
+  background: #0f1c2b;
+  color: var(--text-dim);
+  border: 1px solid var(--frame-dim);
+  margin-left: -1px;
+  cursor: pointer;
+}
+
+.w-btn:hover {
+  color: var(--text-bright);
+}
+
+.w-btn.active {
+  background: var(--system);
+  border-color: var(--system);
+  color: #111;
+  font-weight: 700;
+}
+
+.w-btn.active.surge {
+  background: var(--alert);
+  border-color: var(--alert);
+  color: #fff;
+}
+
+/* Weakest link, under the readiness breakdown. */
+.weakest-link {
+  margin: 8px 0 4px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--alert);
+  background: rgba(192, 57, 43, 0.07);
+}
+
+.weakest-link .wl-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-bright);
+}
+
+.weakest-link .wl-body {
+  margin-top: 3px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* Daily summary: why readiness moved. */
+.summary-why {
+  margin: 10px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--divider);
+}
+
+.why-row {
+  display: grid;
+  grid-template-columns: 44px 96px 1fr;
+  gap: 8px;
+  font-size: 11px;
+  padding: 2px 0;
+  align-items: baseline;
+}
+
+.why-row .why-impact {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.why-row.bad .why-impact {
+  color: var(--alert);
+}
+
+.why-row.good .why-impact {
+  color: var(--good);
+}
+
+.why-row .why-comp,
+.why-weakest .why-comp {
+  color: var(--text-bright);
+}
+
+.why-row .why-cause {
+  color: var(--text);
+}
+
+.why-weakest {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.why-weakest .why-cause {
+  color: var(--text-dim);
+}
+
+/* Tasking on passage. */
+.passage-banner {
+  margin: 4px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--training, #3d7cc9);
+  border-left: 3px solid #3d7cc9;
+  background: rgba(61, 124, 201, 0.08);
+}
+
+.passage-banner .pb-title {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #7fb0d9;
+}
+
+.passage-banner .pb-body {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+/* The event's subject: a link to their personnel file. */
+.ec-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--elevator);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ec-link:hover {
+  color: var(--text-bright);
+}
+
+.ec-subject {
+  display: inline-block;
+  margin-top: 5px;
+  background: rgba(241, 197, 6, 0.08);
+  border: 1px solid rgba(241, 197, 6, 0.45);
+  color: var(--elevator);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  cursor: pointer;
+}
+
+.ec-subject:hover {
+  background: rgba(241, 197, 6, 0.18);
+  color: var(--text-bright);
+}
+
+/* Personnel photographs: pixel art at whole-number scales. */
+.portrait {
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+  border: 1px solid var(--frame-dim);
+  background: #0a1524;
+}
+
+.portrait-file {
+  margin-right: 10px;
+  border-color: var(--frame);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.portrait-row {
+  width: 32px;
+  height: 32px;
+}
+
+.with-portrait {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ec-subject {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 8px 2px 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   The commanding officer's council
+   --------------------------------------------------------------------------- */
+
+.council-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.seat-card {
+  display: grid;
+  grid-template-columns: 98px 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 6px 12px;
+  padding: 10px;
+  border: 1px solid var(--frame-dim);
+  background: rgba(13, 27, 44, 0.6);
+}
+
+.seat-card.delegated {
+  border-color: var(--system);
+  box-shadow: inset 3px 0 0 var(--system);
+}
+
+.seat-card.vacant {
+  border-style: dashed;
+  border-color: var(--alert);
+}
+
+.seat-photo {
+  grid-row: 1 / span 2;
+}
+
+.officer-portrait {
+  border-color: var(--frame);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.55);
+}
+
+.seat-vacant {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--alert);
+  color: var(--alert);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.seat-info {
+  min-width: 0;
+}
+
+.seat-title {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--elevator);
+  text-transform: uppercase;
+}
+
+.seat-domain {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 1px 0 4px;
+}
+
+.seat-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 3px;
+}
+
+.seat-traits {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.seat-effect {
+  margin-top: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.seat-effect.good {
+  color: var(--good);
+}
+
+.seat-effect.bad {
+  color: var(--alert);
+}
+
+.seat-actions {
+  grid-column: 2;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.seat-actions .btn {
+  font-size: 9.5px;
+  padding: 3px 8px;
+}
+
+.seat-delegation {
+  grid-column: 1 / span 2;
+  font-size: 9.5px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--divider);
+  padding-top: 5px;
+}
+
+.candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.candidate {
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid var(--frame-dim);
+}
+
+/* Council advice on event cards. */
+.ec-advice {
+  margin: 0 10px 8px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--elevator);
+  background: rgba(241, 197, 6, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.adv-row {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.adv-portrait {
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+}
+
+.adv-who {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--elevator);
+}
+
+.adv-say {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.adv-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: #111;
+  background: var(--elevator);
+  vertical-align: middle;
+}
+
+/* ---------------------------------------------------------------------------
+   Alerts and the journal
+   --------------------------------------------------------------------------- */
+
+.alert-bar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 26;
+}
+
+.alert-icon {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  font-family: var(--mono);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  border: 2px solid rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.25);
+}
+
+.alert-icon:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+
+.alert-icon.lvl-urgent {
+  background: radial-gradient(circle at 35% 30%, #e05a4a, #8a1f17);
+  animation: alert-pulse 1.6s ease-in-out infinite;
+}
+
+.alert-icon.lvl-warn {
+  background: radial-gradient(circle at 35% 30%, #f0c040, #9a6a0a);
+  color: #1a1206;
+}
+
+.alert-icon.lvl-info {
+  background: radial-gradient(circle at 35% 30%, #5f9ed9, #1f4a7a);
+}
+
+.alert-count {
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: #0a1524;
+  border: 1px solid var(--frame);
+  color: var(--text-bright);
+  font-size: 9.5px;
+  line-height: 14px;
+}
+
+@keyframes alert-pulse {
+  50% {
+    box-shadow: 0 0 0 4px rgba(224, 90, 74, 0.25), 0 2px 8px rgba(0, 0, 0, 0.55);
+  }
+}
+
+.journal-btn {
+  position: relative;
+}
+
+.journal-btn.urgent {
+  border-color: var(--alert);
+  color: #ffb3aa;
+}
+
+.journal-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--alert);
+  color: #fff;
+  font-size: 9.5px;
+  line-height: 16px;
+}
+
+.journal-panel {
+  position: fixed;
+  top: 40px;
+  right: 270px;
+  width: 420px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  z-index: 120;
+  background: rgba(6, 14, 25, 0.985);
+  border: 1px solid var(--frame);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  padding: 10px 12px;
+}
+
+.journal-panel.hidden {
+  display: none;
+}
+
+.jp-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--elevator);
+  margin: 6px 0;
+}
+
+.jp-empty {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 4px 0 8px;
+}
+
+.jp-alert {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.jp-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 24px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.jp-alert.lvl-urgent .jp-icon {
+  background: #a8342a;
+}
+
+.jp-alert.lvl-warn .jp-icon {
+  background: #b8860b;
+  color: #1a1206;
+}
+
+.jp-alert.lvl-info .jp-icon {
+  background: #2f5a8a;
+}
+
+.jp-alert-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.jp-alert-detail {
+  font-size: 10.5px;
+  color: var(--text);
+}
+
+.jp-alert .btn {
+  font-size: 9.5px;
+  padding: 3px 9px;
+}
+
+.jp-log {
+  font-size: 10.5px;
+}
+
+.jp-day {
+  margin: 8px 0 3px;
+  font-weight: 700;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--divider);
+}
+
+.jp-entry {
+  padding: 2px 0 2px 8px;
+  border-left: 2px solid var(--frame-dim);
+  margin: 2px 0;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.jp-entry.bad {
+  border-left-color: var(--alert);
+}
+
+.jp-entry.good {
+  border-left-color: var(--good);
+}
+
+/* An alert pointed here. */
+.flash {
+  animation: flash-ring 1.2s ease-out 2;
+}
+
+@keyframes flash-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(241, 197, 6, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(241, 197, 6, 0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The alerts menu
+   --------------------------------------------------------------------------- */
+
+.alert-menu {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.alert-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-bright);
+  background: rgba(6, 14, 25, 0.95);
+  border: 1px solid var(--frame);
+  border-radius: 18px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.55);
+}
+
+.alert-toggle .at-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  background: #2f5a8a;
+}
+
+.alert-toggle.lvl-urgent {
+  border-color: var(--alert);
+}
+
+.alert-toggle.lvl-urgent .at-icon {
+  background: radial-gradient(circle at 35% 30%, #e05a4a, #8a1f17);
+  animation: alert-pulse 1.6s ease-in-out infinite;
+}
+
+.alert-toggle.lvl-warn {
+  border-color: var(--system);
+}
+
+.alert-toggle.lvl-warn .at-icon {
+  background: radial-gradient(circle at 35% 30%, #f0c040, #9a6a0a);
+  color: #1a1206;
+}
+
+.alert-toggle.lvl-info .at-icon {
+  background: radial-gradient(circle at 35% 30%, #6fbf5a, #2f6a2a);
+}
+
+.alert-toggle .at-caret {
+  color: var(--text-dim);
+}
+
+.alert-list {
+  margin-top: 6px;
+  width: 440px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  background: rgba(6, 14, 25, 0.985);
+  border: 1px solid var(--frame);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  padding: 6px 8px 8px;
+}
+
+.alert-list.hidden {
+  display: none;
+}
+
+.al-section {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--elevator);
+  margin: 8px 2px 4px;
+}
+
+.al-empty {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 2px 4px 6px;
+}
+
+.al-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 26px 1fr auto auto;
+  gap: 9px;
+  align-items: center;
+  text-align: left;
+  padding: 6px 6px;
+  margin: 2px 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: 3px solid var(--frame-dim);
+  color: var(--text);
+  font-family: var(--mono);
+  cursor: pointer;
+}
+
+.al-row:hover {
+  background: rgba(241, 197, 6, 0.07);
+  border-color: var(--frame-dim);
+}
+
+.al-row.lvl-urgent {
+  border-left-color: var(--alert);
+}
+
+.al-row.lvl-warn {
+  border-left-color: var(--system);
+}
+
+.al-row.lvl-info {
+  border-left-color: #3d7cc9;
+}
+
+.al-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+  background: #2f5a8a;
+}
+
+.al-row.lvl-urgent .al-icon {
+  background: #a8342a;
+}
+
+.al-row.lvl-warn .al-icon {
+  background: #b8860b;
+  color: #1a1206;
+}
+
+.al-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.al-detail {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+.al-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #0f1c2b;
+  border: 1px solid var(--frame);
+  font-size: 10px;
+  text-align: center;
+  color: var(--text-bright);
+}
+
+.al-go {
+  font-size: 18px;
+  color: var(--text-dim);
+}
+
+.al-row:hover .al-go {
+  color: var(--elevator);
+}
+
+/* A decision card brought forward from the alerts menu. */
+.event-card.focused {
+  animation: card-focus 1.1s ease-out 2;
+}
+
+@keyframes card-focus {
+  0% {
+    box-shadow: 0 0 0 0 rgba(241, 197, 6, 0.95);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(241, 197, 6, 0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Flight operations sequence
+   --------------------------------------------------------------------------- */
+
+.stage.flightops .event-stack,
+.stage.flightops .alert-menu,
+.stage.flightops .deck-caption,
+.stage.flightops .context {
+  display: none;
+}
+
+.flightops-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  min-width: 460px;
+  padding: 10px 16px 9px;
+  text-align: center;
+  background: rgba(5, 12, 23, 0.9);
+  border: 1px solid var(--frame);
+  border-top: 3px solid var(--elevator);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+}
+
+.fo-title {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  color: var(--elevator);
+}
+
+.fo-chips {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 6px;
+}
+
+.fo-chip {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-bright);
+  background: #12202f;
+  border: 1px solid var(--frame-dim);
+}
+
+.fo-sub {
+  font-size: 10.5px;
+  color: var(--text);
+}
+
+.fo-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.fo-actions .btn {
+  font-size: 9.5px;
+  padding: 3px 10px;
+}
+
+.fo-hint {
+  margin-top: 5px;
+  font-size: 9.5px;
+  color: var(--text-dim);
+}
+
+/* Mission mechanics: board summary and the tasking banner. */
+.mech-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 6px;
+  font-size: 10.5px;
+}
+
+.mech-label {
+  color: var(--elevator);
+  font-weight: 600;
+}
+
+.mech-bonus {
+  color: var(--text-dim);
+}
+
+.mech-banner {
+  border-color: var(--system);
+  border-left-color: var(--system);
+  background: rgba(232, 173, 18, 0.07);
+}
+
+.mech-banner .pb-title {
+  color: var(--system);
+}

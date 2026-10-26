@@ -1,0 +1,26 @@
+{
+  "name": "deck-master",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Deck Master - a turn-based aircraft carrier command simulation",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "verify": "node scripts/screenshot.mjs",
+    "i18n:strings": "vite-node scripts/dump-strings.mjs",
+    "balance": "vite-node scripts/balance-tasking.mjs",
+    "balance:deployment": "vite-node scripts/balance-deployment.mjs"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.9.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vite-node": "^6.0.0",
+    "vitest": "^2.1.8"
+  }
+}
