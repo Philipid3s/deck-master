@@ -1,4 +1,4 @@
-﻿# Deck Master â€” USS Resolute
+﻿# Deck Master - USS Resolute
 
 A turn-based aircraft carrier command simulation. One turn is one in-game day.
 The ship itself is the interface: you navigate decks, inspect spaces, click on
