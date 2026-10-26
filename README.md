@@ -38,7 +38,7 @@ eight days â€” and fails on any console error.
 | Drag | Pan the deck |
 | Wheel | Zoom toward the cursor |
 | Shift+Wheel, â†‘ / â†“ | Change deck |
-| `1`â€“`8` | Jump to a deck |
+| `1`-`8` | Jump to a deck |
 | Click | Inspect a room, person or aircraft |
 | `F` | Fit the whole deck in view |
 | `A` | Air tasking order |
@@ -50,7 +50,7 @@ eight days â€” and fails on any console error.
 
 ## Two campaigns
 
-**Deployment â€” 30 days** is the way in, and what the title screen offers
+**Deployment - 30 days** is the way in, and what the title screen offers
 first. The orders are fixed: complete two operations with Success or better
 inside thirty days. Three more objectives â€” prestige 175, crew morale 70%,
 readiness 60%, judged on the last day â€” each earn a star. The orders panel
