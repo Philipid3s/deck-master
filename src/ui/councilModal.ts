@@ -1,6 +1,6 @@
 import type { GameState, Officer, SeatId } from '../core/types';
 import type { GameApi } from './api';
-import { Modal } from './modals';
+import { Modal } from './modal';
 import {
   SEATS,
   appointOfficer,

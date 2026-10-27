@@ -7,7 +7,7 @@ import {
   type Objective,
   type ObjectiveState,
 } from '../core/deployment';
-import { Modal } from './modals';
+import { Modal } from './modal';
 import { append, bar, button, clear, div, note, noteRaw, span, statRow } from './dom';
 import { OUTCOME_LABELS } from '../core/missions';
 import { t, tf } from '../i18n';

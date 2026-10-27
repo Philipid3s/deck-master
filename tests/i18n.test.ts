@@ -103,7 +103,7 @@ describe('translation behaviour', () => {
     setLocale('fr');
     // French uses a narrow no-break space as the group separator.
     expect(formatMoney(1234567).endsWith('$')).toBe(true);
-    expect(formatMoney(1234567).replace(/[\s  ]/g, '')).toBe('1234567$');
+    expect(formatMoney(1234567).replace(/[\s\u202f\u00a0]/g, '')).toBe('1234567$');
     setLocale('en');
   });
 });

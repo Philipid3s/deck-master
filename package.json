@@ -14,11 +14,16 @@
     "verify": "node scripts/screenshot.mjs",
     "i18n:strings": "vite-node scripts/dump-strings.mjs",
     "balance": "vite-node scripts/balance-tasking.mjs",
-    "balance:deployment": "vite-node scripts/balance-deployment.mjs"
+    "balance:deployment": "vite-node scripts/balance-deployment.mjs",
+    "lint": "eslint ."
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^15.15.0",
     "puppeteer": "^25.9.0",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.72.1",
     "vite": "^6.0.7",
     "vite-node": "^6.0.0",
     "vitest": "^2.1.8"

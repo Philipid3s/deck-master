@@ -16,6 +16,9 @@ import { stationCrew } from './posts';
 export const SAVE_VERSION = 3;
 
 export function newCampaign(seed?: number, mode: CampaignMode = 'career'): GameState {
+  // The one draw outside Rng: picking a fresh campaign's seed. Everything
+  // after this point replays from it.
+  // eslint-disable-next-line no-restricted-properties
   const campaignSeed = seed ?? Math.floor(Math.random() * 0x7fffffff);
   const rng = new Rng(campaignSeed);
 

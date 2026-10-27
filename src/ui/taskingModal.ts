@@ -1,7 +1,7 @@
 import type { Aircraft, AircraftDuty, GameState } from '../core/types';
 import { mechanicHint } from './operationsView';
 import type { GameApi } from './api';
-import { Modal } from './modals';
+import { Modal } from './modal';
 import { DUTIES, DUTIES_BY_ID, aircraftType, typeSuitability } from '../data/aircraft';
 import { missionDef } from '../data/missions';
 import { aircraftReadiness, aircraftStatusText, isMissionCapable, limitingSystem } from '../core/aircraft';

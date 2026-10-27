@@ -42,6 +42,12 @@ export const FR: Record<string, string> = {
   'Could not save — browser storage unavailable':
     'Sauvegarde impossible — stockage du navigateur indisponible',
   'No save found': 'Aucune sauvegarde trouvée',
+  EXPORT: 'EXPORTER',
+  'Download the campaign as a file': 'Télécharger la campagne dans un fichier',
+  'Campaign written to {file}': 'Campagne enregistrée dans {file}',
+  'LOAD FROM FILE': 'CHARGER UN FICHIER',
+  'That file is not a Deck Master save, or is from a version too old to load':
+    'Ce fichier n’est pas une sauvegarde Deck Master, ou provient d’une version trop ancienne',
   'Command a nuclear aircraft carrier one day at a time. The ship is the interface: navigate the decks, inspect the spaces, and manage the people who keep it running. Every decision costs something.':
     'Commandez un porte-avions nucléaire, un jour à la fois. Le navire est l’interface : parcourez les ponts, inspectez les locaux et dirigez les femmes et les hommes qui le font fonctionner. Chaque décision a un coût.',
   'A seed makes a campaign reproducible — the same seed and the same decisions replay exactly.':
