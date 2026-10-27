@@ -475,9 +475,11 @@ export class App implements GameApi {
     renderLegend(this.legendHost);
     renderDeploymentPanel(this.ordersHost, this.gameState);
     renderWatchBill(this.watchHost, this.gameState, (depts, policy) => {
-      for (const d of depts) setWatchPolicy(this.gameState, d, policy);
+      let recalled = 0;
+      for (const d of depts) recalled += setWatchPolicy(this.gameState, d, policy);
       // Takes effect at once: today's rota is the one the day is played with.
       const moved = applyWatchBill(this.gameState);
+      moved.returned += recalled;
       this.toast(
         tf('Watch bill: {policy} — {down} stood down, {up} back on duty', {
           policy: t(WATCH_POLICY_LABELS[policy]),

@@ -16,6 +16,10 @@ import { DEPT_IDS } from '../data/specialties';
  *  - Three watches: people rest well before they are exhausted, so fewer
  *    hands are on duty on any day but the ones who are, are sharp.
  *
+ * Someone resting works at half rate (`RESTING_OUTPUT`), so three watches
+ * costs output today for a fresher crew tomorrow — a setting to move with
+ * each department's fatigue, not one to leave on.
+ *
  * Applied once at the end of each day, after the day's fatigue has landed,
  * so the player sees tomorrow's rota and can still override anyone by hand.
  * A person the player sends to rest stays resting until rested, whatever
@@ -52,8 +56,28 @@ export function watchPolicy(state: GameState, dept: DeptId): WatchPolicy {
   return state.watchPolicy?.[dept] ?? DEFAULT_WATCH_POLICY;
 }
 
-export function setWatchPolicy(state: GameState, dept: DeptId, policy: WatchPolicy): void {
+/**
+ * Sets a department's policy. Moving to a harder-working policy recalls
+ * everyone resting who would not have been stood down under it — so
+ * switching from three watches to standard on arriving on station brings
+ * the watch below back to work today rather than days later. Nobody past
+ * the standard threshold is turned out of their rack, even for a surge.
+ * Returns how many were recalled.
+ */
+export function setWatchPolicy(state: GameState, dept: DeptId, policy: WatchPolicy): number {
+  const previous = watchPolicy(state, dept);
   state.watchPolicy = { ...(state.watchPolicy ?? {}), [dept]: policy };
+  if (WATCH_POLICIES[policy].restAt <= WATCH_POLICIES[previous].restAt) return 0;
+
+  const threshold = Math.min(WATCH_POLICIES[policy].restAt, WATCH_POLICIES.standard.restAt);
+  let recalled = 0;
+  for (const c of state.crew) {
+    if (c.department === dept && c.status === 'resting' && rotatable(c) && c.fatigue < threshold) {
+      c.status = 'working';
+      recalled++;
+    }
+  }
+  return recalled;
 }
 
 /** Whether the watch bill may move this person at all. */

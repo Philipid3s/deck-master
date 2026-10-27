@@ -70,18 +70,23 @@ ship. Sustained failure is judged faster than in a career (five days
 insolvent, seven days critical).
 
 The thresholds come from `npm run balance:deployment`, which plays the
-deployment headless across twelve seeds with four players. Recent figures:
+deployment headless across thirty-six seeds with the scripted players in
+`scripts/deploymentBots.ts` (`BOT=careful` for one player seed by seed).
+Recent figures:
 
 | Player | Wins | Stars |
 | --- | --- | --- |
-| Touches nothing (standard watch bill, auto-tasking, sails at once) | 2/12 | 0.1 |
-| `SURGE=1`: nobody ever rests (the old default) | 0/12 | 0 |
-| `ROTATION=1`: one decision, three watches everywhere | 12/12 | 1.5 |
-| `CAREFUL=1`: three watches, work-ups on passage, recovery alongside | 12/12 | 1.6 |
-| `DELEGATE=1`: every domain handed to the council, nothing else | 5/12 | 0.9 |
+| `passive`: touches nothing (standard watch bill, auto-tasking, sails at once) | 0/36 | 0 |
+| `surge`: nobody ever rests | 0/36 | 0 |
+| `rotation`: one decision, three watches everywhere | 15/36 | 0.8 |
+| `careful`: moves each department between standard and three watches as its fatigue moves; work-ups on passage | 28/36 | 1.4 |
+| `delegate`: every domain handed to the council, nothing else | 21/36 | 1.5 |
 
-The orders separate the passive player from the one who manages fatigue;
-the third star needs better than any of the bots.
+The orders separate the passive player from the one who manages fatigue, and
+the one who keeps managing it from the one who set three watches once; the
+third star needs better than any of the bots. `tests/balance.test.ts` holds
+that order over twenty-four seeds, so a change that lets a single setting win
+again fails the build.
 
 **Open career** is the original sandbox: no horizon, ending only at
 Legendary standing or on sustained failure.
@@ -134,8 +139,8 @@ heads — a separate corps of senior officers, not the ship's company
   an officer works at 60% effect. The portrait's expression shows it.
 - **Delegation** saves the clicks and costs the control: left alone, an
   officer misjudges some days (nearly two in five for an average officer,
-  rarely for a gifted one). A fully delegated ship wins about half its
-  deployments; an engaged captain wins nearly all of them.
+  rarely for a gifted one). A fully delegated ship wins a little over half
+  its deployments; an engaged captain wins about four in five.
 - Officers join or leave only alongside, from candidates refreshed at each
   return to port.
 
@@ -272,6 +277,20 @@ the WATCH BILL panel, not one person at a time (`core/watch.ts`):
 The change of watch runs at the end of each day, after the day's fatigue has
 landed, so the player sees tomorrow's rota and can still override anyone by
 hand. Changing a policy applies at once. The most tired go first.
+
+**Rest is not free.** Someone stood down still stands one watch in three, so
+they work at half rate (`RESTING_OUTPUT` in `core/crew.ts`) while their
+fatigue falls fast — a day's rest takes off two to three days' work on
+station. Three watches therefore trades output today for a fresher crew, and
+it is a decision to revisit: a department running tired goes to three
+watches, a fresh one comes back to standard. Moving a department to a
+harder-working policy calls back everyone resting it would not have stood
+down, so the hands are there the same day; nobody past the standard
+threshold is turned out of their rack, even for a surge.
+
+Until this was in place resting people still did a full day's work, and
+setting three watches everywhere on day one won more deployments than
+managing the watch bill did.
 
 ### The mission cycle
 

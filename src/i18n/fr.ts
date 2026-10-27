@@ -1778,8 +1778,8 @@ export const FR: Record<string, string> = {
     'Standard : les plus épuisés sont mis au repos, quelques-uns à la fois.',
   'Three watches: people rest before they are worn out. Fewer hands on duty, sharper ones.':
     'Trois quarts : chacun se repose avant d’être usé. Moins de bras de service, mais plus affûtés.',
-  'SRG surge · STD standard · 3W three watches. Rested people return to duty on their own.':
-    'MAX effort maximal · STD standard · 3Q trois quarts. Les reposés reprennent leur service d’eux-mêmes.',
+  'SRG surge · STD standard · 3W three watches. People resting work at half rate. Moving to a harder-working policy calls back anyone it would not stand down.':
+    'MAX effort maximal · STD standard · 3Q trois quarts. Au repos, on travaille à mi-régime. Passer à un régime plus exigeant rappelle ceux qu’il ne mettrait pas au repos.',
   'Watch bill: {policy} — {down} stood down, {up} back on duty':
     'Rotation des quarts : {policy} — {down} mis au repos, {up} de retour en service',
   'Change of watch: {down} stood down to rest, {up} back on duty':

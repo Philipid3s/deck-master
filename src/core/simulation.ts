@@ -401,7 +401,9 @@ function runCrewDay(
     }
 
     if (crew.status === 'resting') {
-      crew.fatigue = clamp(crew.fatigue - (13 + crew.attrs.stamina * 0.06) * restBonus, 0, 100);
+      // Rest that costs half a person's output has to be worth it: a day
+      // stood down takes off two to three days' work on station at normal tempo.
+      crew.fatigue = clamp(crew.fatigue - (16.25 + crew.attrs.stamina * 0.075) * restBonus, 0, 100);
       crew.morale = clamp(crew.morale + 1.4 * moraleBonus, 0, 100);
       crew.consecutiveWorkDays = 0;
       crew.consecutiveFlyingDays = 0;

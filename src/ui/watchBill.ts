@@ -68,6 +68,6 @@ export function renderWatchBill(
 
   append(
     host,
-    note('SRG surge · STD standard · 3W three watches. Rested people return to duty on their own.'),
+    note('SRG surge · STD standard · 3W three watches. People resting work at half rate. Moving to a harder-working policy calls back anyone it would not stand down.'),
   );
 }

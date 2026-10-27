@@ -99,8 +99,23 @@ export function effectiveness(crew: CrewMember, specialty?: SpecialtyId): number
   const disciplineMod = 0.9 + (crew.attrs.discipline / 100) * 0.2;
   const staminaMod = 0.92 + (crew.attrs.stamina / 100) * 0.16;
 
-  return Math.max(0, base * fatigueMod * moraleMod * disciplineMod * staminaMod * 1.35);
+  const restMod = crew.status === 'resting' ? RESTING_OUTPUT : 1;
+
+  return Math.max(0, base * fatigueMod * moraleMod * disciplineMod * staminaMod * 1.35 * restMod);
 }
+
+/**
+ * What someone stood down to rest still does. Off the duty watch is not off
+ * the ship: they stand one watch in three instead of two, so they work at
+ * half rate while they recover.
+ *
+ * This is what makes rest a cost. With resting people at full output, three
+ * watches everywhere was free fatigue relief and the one decision that won a
+ * deployment; at nothing, a ship that has to rest a third of its company on
+ * station could not do its job. `npm run balance:deployment` is how the
+ * figure was chosen.
+ */
+export const RESTING_OUTPUT = 0.5;
 
 /** Primary skill counts fully; the secondary specialty at 65%. */
 export function relevantSkill(crew: CrewMember, specialty: SpecialtyId): number {

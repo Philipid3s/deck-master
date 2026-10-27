@@ -6,6 +6,7 @@ import { computeReadiness, explainReadiness } from '../src/core/readiness';
 import { autoAssign, trainOnPassage } from '../src/core/tasking';
 import { applyWatchBill, setWatchPolicy, watchPolicy, DEFAULT_WATCH_POLICY } from '../src/core/watch';
 import { deploymentObjectives } from '../src/core/deployment';
+import { effectiveness, RESTING_OUTPUT } from '../src/core/crew';
 import { DEPT_IDS } from '../src/data/specialties';
 import { FLYING_DUTIES, type GameState } from '../src/core/types';
 
@@ -72,6 +73,39 @@ describe('watch bill', () => {
       }
     }
     expect(avgFatigue(rota)).toBeLessThan(avgFatigue(surge) - 5);
+  });
+
+  it('costs output: someone resting works at half rate', () => {
+    const s = newCampaign(5);
+    const c = s.crew.find((x) => x.status === 'working')!;
+    const onDuty = effectiveness(c);
+    c.status = 'resting';
+    expect(effectiveness(c)).toBeCloseTo(onDuty * RESTING_OUTPUT);
+  });
+
+  it('calls back the rested when a department moves to a harder-working policy', () => {
+    const s = newCampaign(6);
+    setWatchPolicy(s, 'DECK', 'rotation');
+    const deck = s.crew.filter((c) => c.department === 'DECK' && c.status === 'working');
+    const [fresh, spent] = [deck[0]!, deck[1]!];
+    fresh.status = 'resting';
+    fresh.fatigue = 45;
+    spent.status = 'resting';
+    spent.fatigue = 90;
+    expect(setWatchPolicy(s, 'DECK', 'standard')).toBe(1);
+    expect(fresh.status).toBe('working');
+    // Nobody past the standard threshold is turned out, even for a surge.
+    expect(setWatchPolicy(s, 'DECK', 'surge')).toBe(0);
+    expect(spent.status).toBe('resting');
+  });
+
+  it('calls nobody back when a department moves to more rest', () => {
+    const s = newCampaign(7);
+    const c = s.crew.find((x) => x.department === 'ENG' && x.status === 'working')!;
+    c.status = 'resting';
+    c.fatigue = 40;
+    expect(setWatchPolicy(s, 'ENG', 'rotation')).toBe(0);
+    expect(c.status).toBe('resting');
   });
 
   it('replays deterministically from the seed', () => {
