@@ -1,8 +1,4 @@
-import type { GameState, Tempo } from '../core/types';
-import { mechanicRows } from './operationsView';
-import { ALERT_SPOTS, alertBoard } from '../core/tasking';
-import { DUTIES_BY_ID } from '../data/aircraft';
-import type { AircraftDuty, DailyReport } from '../core/types';
+import type { DailyReport, GameState, Tempo } from '../core/types';
 import { AlertDropdown, JournalPanel } from './journal';
 import { writeJournal, type AlertAction } from '../core/alerts';
 import { CouncilModal } from './councilModal';
@@ -10,93 +6,53 @@ import { ensureCouncil, recordDecision } from '../core/council';
 import type { GameApi } from './api';
 import { DeckView, type HitTarget } from '../render/deckView';
 import { MiniMap } from '../render/miniMap';
-import { PAL, DEPT_ACCENT } from '../render/palette';
-import { DECKS, getDeck, getRoom } from '../data/decks';
-import { SPECIALTIES } from '../data/specialties';
+import { DECKS } from '../data/decks';
 import { rank } from '../data/ranks';
-import { aircraftType } from '../data/aircraft';
-import { missionDef } from '../data/missions';
-import { newCampaign } from '../core/newGame';
 import { endDay, setRest } from '../core/simulation';
 import { appointToPost } from '../core/posts';
 import { postDef } from '../data/posts';
 import { resolveEvent } from '../core/events';
 import { enrol } from '../core/training';
-import { promote, statusLabel, effectiveness, isAvailable, primarySkill } from '../core/crew';
+import { promote } from '../core/crew';
 import { startMission } from '../core/missions';
-import { prestigeTier } from '../core/economy';
-import { readinessLabel, statusColor } from '../core/readiness';
-import { aircraftStatusText, aircraftReadiness, relocateAircraft } from '../core/aircraft';
+import { relocateAircraft } from '../core/aircraft';
 import { Rng } from '../core/rng';
-import { autosave, hasSave, loadAutosave, loadGame, saveGame } from '../core/save';
+import { newCampaign } from '../core/newGame';
+import { autosave, saveGame } from '../core/save';
 import { ContextPanel } from './contextPanel';
 import { TaskingModal } from './taskingModal';
 import { AircrewPickerModal } from './aircrewModal';
 import { CrewPickerModal } from './crewPickerModal';
 import { assignAircrew, autoCrew, clearSeat } from '../core/aircrew';
 import { computeTasking } from '../core/tasking';
-import { STATUS_LABELS, isInPort, statusDetail } from '../core/status';
-import type { CarrierStatus } from '../core/types';
 import { EventCards } from './eventCards';
-import {
-  DockyardModal,
-  MissionModal,
-  RosterModal,
-  PostPickerModal,
-  SummaryModal,
-  TrainingPickerModal,
-} from './modals';
-import {
-  append,
-  bar,
-  button,
-  clear,
-  div,
-  formatCredits,
-  note,
-  span,
-  statRow,
-} from './dom';
-import {
-  LOCALES,
-  LOCALE_NAMES,
-  getLocale,
-  onLocaleChange,
-  setLocale,
-  t,
-  tf,
-  tnote,
-} from '../i18n';
-import { SUPPLY_LABELS } from '../core/economy';
+import { DockyardModal } from './dockyardModal';
+import { MissionModal } from './missionModal';
+import { RosterModal } from './rosterModal';
+import { SummaryModal } from './summaryModal';
+import { PostPickerModal, TrainingPickerModal } from './pickerModals';
+import { append, button, clear, div, span } from './dom';
+import { LOCALES, LOCALE_NAMES, getLocale, onLocaleChange, setLocale, t, tf, tnote } from '../i18n';
 import { shipAudio } from './audio';
 import { DebriefModal, renderDeploymentPanel } from './deployment';
 import { Tutorial, tutorialSeen } from './tutorial';
 import { renderWatchBill } from './watchBill';
 import { applyWatchBill, setWatchPolicy, WATCH_POLICY_LABELS } from '../core/watch';
-import { COMPONENT_ADVICE, COMPONENT_LABELS, weakestLink } from '../core/readiness';
 import { DEPLOYMENT_DAYS, isDeployment } from '../core/deployment';
-import type { CampaignMode } from '../core/types';
 import { eventDef } from '../data/events';
+import { showTitleScreen } from './titleScreen';
+import { downloadSave, saveFileName } from './saveFile';
+import {
+  renderBottomMetrics,
+  renderDeckCaption,
+  renderLegend,
+  renderReadout,
+  renderStatusBar,
+} from './shipStatus';
+import { renderHoverTooltip } from './hoverTooltip';
+import { flightOpsAuto, flightOpsBanner, setFlightOpsAuto } from './flightOps';
 
 const TEMPOS: Tempo[] = ['low', 'normal', 'high', 'maximum'];
-
-/** Legend entries, transcribed from the concept art's legend block. */
-const LEGEND: [string, string][] = [
-  ['CREW', PAL.crew],
-  ['AIRCRAFT', PAL.aircraftAccent],
-  ['SYSTEM', PAL.system],
-  ['SUPPORT', PAL.support],
-  ['ELEVATOR', PAL.elevator],
-  ['STAIRS / LADDER', PAL.stairs],
-];
-
-const STATUS_LEGEND: [string, string][] = [
-  ['IDLE', PAL.idle],
-  ['WORKING', PAL.working],
-  ['TRAINING', PAL.training],
-  ['REPAIRING', PAL.repairing],
-  ['ALERT', PAL.alert],
-];
 
 export class App implements GameApi {
   private gameState: GameState;
@@ -125,6 +81,7 @@ export class App implements GameApi {
   private tooltip!: HTMLDivElement;
   private endDayBtn!: HTMLButtonElement;
   private saveBtn!: HTMLButtonElement;
+  private exportBtn!: HTMLButtonElement;
   private soundBtn!: HTMLButtonElement;
   private ordersHost!: HTMLDivElement;
   private ordersPanel!: HTMLDivElement;
@@ -152,7 +109,10 @@ export class App implements GameApi {
 
   constructor(private host: HTMLElement) {
     this.gameState = newCampaign();
-    this.buildTitleScreen();
+    showTitleScreen(this.host, (state) => {
+      this.gameState = state;
+      this.buildGame();
+    });
   }
 
   state(): GameState {
@@ -161,97 +121,6 @@ export class App implements GameApi {
 
   view(): DeckView {
     return this.deckView;
-  }
-
-  // =======================================================================
-  // Title screen
-  // =============================================================================
-
-  private buildTitleScreen(): void {
-    const screen = div('title-screen');
-    const h1 = document.createElement('h1');
-    h1.textContent = 'DECK MASTER';
-    append(screen, h1, div('sub', 'USS RESOLUTE — CVN 79'));
-    const blurb = div('blurb');
-    append(screen, blurb);
-
-    const seedLabel = span('', '');
-    const hint = note('');
-
-    // The language picker sits on the title screen as well as the top bar,
-    // so a French player never has to read an English menu to find it.
-    const langRow = div('btn-row');
-    const langButtons = LOCALES.map((code) =>
-      button(LOCALE_NAMES[code], getLocale() === code ? 'primary' : '', () => {
-        setLocale(code);
-      }),
-    );
-    append(langRow, ...langButtons);
-    append(screen, langRow);
-
-    const paintTitle = () => {
-      blurb.textContent = t(
-        'Command a nuclear aircraft carrier one day at a time. The ship is the interface: navigate the decks, inspect the spaces, and manage the people who keep it running. Every decision costs something.',
-      );
-      seedLabel.textContent = t('CAMPAIGN SEED');
-      hint.textContent = t(
-        'A seed makes a campaign reproducible — the same seed and the same decisions replay exactly.',
-      );
-      langButtons.forEach((b, i) => {
-        b.className = `btn ${getLocale() === LOCALES[i] ? 'primary' : ''}`.trim();
-        b.textContent = LOCALE_NAMES[LOCALES[i]!];
-      });
-      newBtn.textContent = t('NEW DEPLOYMENT — 30 DAYS');
-      careerBtn.textContent = t('OPEN CAREER');
-      continueBtn.textContent = t('CONTINUE');
-    };
-    const stopWatching = onLocaleChange(paintTitle);
-
-    const seedRow = div('seed-row');
-    const seedInput = document.createElement('input');
-    seedInput.type = 'text';
-    seedInput.placeholder = t('random');
-    seedInput.style.width = '120px';
-    append(seedRow, seedLabel, seedInput);
-    append(screen, seedRow);
-
-    const actions = div('btn-row');
-    const start = (mode: CampaignMode) => {
-      shipAudio.unlock();
-      const raw = seedInput.value.trim();
-      const seed = raw === '' ? undefined : Number.isFinite(Number(raw))
-        ? Number(raw)
-        : hashSeed(raw);
-      this.gameState = newCampaign(seed, mode);
-      stopWatching();
-      screen.remove();
-      this.buildGame();
-    };
-    // The deployment is the way in: thirty days, clear orders, a grade.
-    // The open career is there for players who want the sandbox.
-    const newBtn = button('NEW DEPLOYMENT — 30 DAYS', 'primary', () => start('deployment'));
-    const careerBtn = button('OPEN CAREER', '', () => start('career'));
-
-    const continueBtn = button('CONTINUE', '', () => {
-      shipAudio.unlock();
-      const loaded = loadGame() ?? loadAutosave();
-      if (!loaded) {
-        this.toast('No save found');
-        return;
-      }
-      this.gameState = loaded;
-      stopWatching();
-      screen.remove();
-      this.buildGame();
-    });
-    continueBtn.disabled = !hasSave() && loadAutosave() === null;
-
-    append(actions, newBtn, careerBtn, continueBtn);
-    append(screen, actions);
-    append(screen, hint);
-
-    paintTitle();
-    this.host.appendChild(screen);
   }
 
   // =======================================================================
@@ -312,7 +181,12 @@ export class App implements GameApi {
       if (saveGame(this.gameState)) this.toast('Campaign saved');
       else this.toast('Could not save — browser storage unavailable');
     });
-    append(topbar, this.saveBtn);
+    // The same campaign as a file, to keep or to carry to another browser.
+    this.exportBtn = button('EXPORT', '', () => {
+      downloadSave(this.gameState);
+      this.toast(tf('Campaign written to {file}', { file: saveFileName(this.gameState) }));
+    });
+    append(topbar, this.saveBtn, this.exportBtn);
     this.endDayBtn = button('END DAY', 'primary', () => this.endDay());
     append(topbar, this.endDayBtn);
 
@@ -598,7 +472,7 @@ export class App implements GameApi {
   refresh(): void {
     this.miniMap.setState(this.gameState);
     this.renderStaticChrome();
-    this.renderLegend();
+    renderLegend(this.legendHost);
     renderDeploymentPanel(this.ordersHost, this.gameState);
     renderWatchBill(this.watchHost, this.gameState, (depts, policy) => {
       for (const d of depts) setWatchPolicy(this.gameState, d, policy);
@@ -616,13 +490,13 @@ export class App implements GameApi {
     this.ordersPanel.style.display = isDeployment(this.gameState) ? '' : 'none';
     this.renderDeckCaption();
     this.renderReadout();
-    this.renderBottomBar();
+    renderBottomMetrics(this.bottomMetrics, this.gameState);
     this.renderTempo();
     this.events.render();
     this.frameAroundEvents();
     if (this.context.isOpen) this.context.render();
     this.renderDay();
-    this.renderStatus();
+    renderStatusBar(this.statusBar, this.gameState);
     this.alertMenu.render();
     this.journal.render();
     shipAudio.setShip(this.gameState.status, computeTasking(this.gameState).flyable > 0);
@@ -644,61 +518,12 @@ export class App implements GameApi {
     this.deckView.fitDeck();
   }
 
-  /**
-   * The carrier status bar. Shows the phase, how long is left in it, and
-   * plainly states whether anything can be brought aboard.
-   */
-  private renderStatus(): void {
-    const s = this.gameState;
-    clear(this.statusBar);
-    this.statusBar.className = `statusbar st-${s.status}`;
-
-    append(
-      this.statusBar,
-      span('sb-label', t(STATUS_LABELS[s.status], 'carrierstatus')),
-      span('sb-detail', tnote(statusDetail(s))),
-    );
-
-    // Phase pips: passage out, work, passage home.
-    const track = div('sb-track');
-    const order: CarrierStatus[] = ['outbound', 'onstation', 'inbound'];
-    if (s.status !== 'port') {
-      const current = order.indexOf(s.status);
-      order.forEach((phase, i) => {
-        const pip = div(`pip${i < current ? ' done' : i === current ? ' active' : ''}`);
-        pip.title = t(STATUS_LABELS[phase], 'carrierstatus');
-        append(track, pip);
-      });
-      append(this.statusBar, track);
-    }
-
-    if (s.mission) {
-      const def = missionDef(s.mission.defId);
-      append(
-        this.statusBar,
-        span(
-          'sb-detail',
-          `${t(def.title)} — ${tf('{n} day passage each way', { n: def.transitDays })}`,
-        ),
-      );
-    }
-
-    append(
-      this.statusBar,
-      span(
-        'sb-note',
-        isInPort(s)
-          ? t('Stores, equipment, airframes and personnel can come aboard')
-          : t('Nothing can be brought aboard until the ship is alongside'),
-      ),
-    );
-
-  }
-
   /** Chrome that is not rebuilt every refresh but must follow the language. */
   private renderStaticChrome(): void {
     this.tempoLabel.textContent = t('TEMPO');
     this.saveBtn.textContent = t('SAVE');
+    this.exportBtn.textContent = t('EXPORT');
+    this.exportBtn.title = t('Download the campaign as a file');
     this.soundBtn.textContent = shipAudio.muted ? t('SOUND OFF') : t('SOUND ON');
     this.soundBtn.title = t('Toggle ambient sound');
     this.stageHint.textContent = t(
@@ -719,30 +544,6 @@ export class App implements GameApi {
     }
   }
 
-  private renderLegend(): void {
-    clear(this.legendHost);
-    const legendGrid = div('legend');
-    for (const [label, color] of LEGEND) {
-      const item = div('item');
-      const sw = div('sw');
-      sw.style.background = color;
-      append(item, sw, span('', t(label, 'legend')));
-      append(legendGrid, item);
-    }
-    append(this.legendHost, legendGrid);
-
-    const statusGrid = div('legend');
-    statusGrid.style.marginTop = '7px';
-    for (const [label, color] of STATUS_LEGEND) {
-      const item = div('item');
-      const sw = div('sw');
-      sw.style.background = color;
-      append(item, sw, span('', t(label, 'legend')));
-      append(statusGrid, item);
-    }
-    append(this.legendHost, div('section-title', t('STATUS')), statusGrid);
-  }
-
   /** The turn indicator. A day, not a time. */
   private renderDay(): void {
     this.hudDay.textContent = isDeployment(this.gameState)
@@ -753,203 +554,15 @@ export class App implements GameApi {
   }
 
   private renderDeckCaption(): void {
-    clear(this.deckCaption);
-    const deck = getDeck(this.deckView.deckIndex);
-    append(
-      this.deckCaption,
-      div('num', tf('DECK {n}', { n: String(deck.index).padStart(2, '0') })),
-      div('name', t(deck.short)),
-    );
-    const list = document.createElement('ol');
-    const rooms = deck.rooms
-      .filter((r) => r.kind !== 'elevator' && r.kind !== 'stairs')
-      .slice(0, 10);
-    for (const room of rooms) {
-      const li = document.createElement('li');
-      li.textContent = t(room.name);
-      const rs = this.gameState.rooms[room.id];
-      if (rs && rs.condition < 45) li.style.color = PAL.alert;
-      list.appendChild(li);
-    }
-    append(this.deckCaption, list);
+    renderDeckCaption(this.deckCaption, this.deckView.deckIndex, this.gameState);
   }
 
   private renderReadout(): void {
-    const s = this.gameState;
-    clear(this.readout);
-
-    const missionTitle = s.mission
-      ? t(missionDef(s.mission.defId).title)
-      : t('No active mission');
-
-    append(
-      this.readout,
-      statRow('CARRIER STATUS', t(STATUS_LABELS[s.status], 'carrierstatus'), statusClass(s.status)),
-    );
-    if (s.status !== 'port' && s.status !== 'onstation') {
-      append(this.readout, statRow('PASSAGE', tnote(statusDetail(s))));
-    }
-    append(this.readout, statRow('MISSION', missionTitle));
-    if (s.mission) {
-      const row = div('attr-row');
-      append(
-        row,
-        span('attr-label', t('PROGRESS')),
-        bar(s.mission.progress),
-        span('attr-value', `${Math.round(s.mission.progress)}`),
-      );
-      append(this.readout, row);
-      // The operation's own mechanic: contacts, raid forecast, tension...
-      append(this.readout, ...mechanicRows(s));
-    }
-
-    // Today's air tasking: the number the player is actually steering.
-    const tasking = computeTasking(s);
-    if (s.mission) {
-      const cover = div('attr-row');
-      append(
-        cover,
-        span('attr-label', t('OBJECTIVE COVER')),
-        bar(Math.min(100, tasking.ratio * 100), statusColor(tasking.ratio * 80)),
-        span('attr-value', `${Math.round(tasking.ratio * 100)}`),
-      );
-      append(this.readout, cover);
-    }
-    append(
-      this.readout,
-      statRow(
-        'TASKED TO FLY',
-        `${tasking.flyable} / ${tasking.sortieCapacity}`,
-        tasking.capacityLimited ? 'bad' : '',
-      ),
-      statRow(
-        'ON DECK ALERT',
-        `${tasking.alertCount} / ${ALERT_SPOTS}`,
-        alertBoard(s).standingBy.length > 0 ? 'warn' : '',
-      ),
-    );
-    const taskingBtn = button('AIR TASKING ORDER', 'wide', () => this.openTasking());
-    append(this.readout, taskingBtn);
-
-    append(this.readout, div('divider'));
-    append(
-      this.readout,
-      statRow('PRESTIGE', `${s.prestige}  ★`, 'gold'),
-      statRow('STANDING', t(prestigeTier(s.prestige).name), 'gold'),
-      statRow('CREDITS', formatCredits(s.credits), s.credits < 0 ? 'bad' : 'gold'),
-    );
-
-    append(this.readout, div('divider'));
-
-    const r = s.readiness;
-    append(
-      this.readout,
-      statRow(
-        'CARRIER READINESS',
-        `${Math.round(r.overall)}%`,
-        r.overall >= 74 ? 'good' : r.overall >= 50 ? 'warn' : 'bad',
-      ),
-      statRow('ASSESSMENT', t(readinessLabel(r.overall), 'readiness')),
-    );
-
-    const readyAircraft = s.aircraft.filter((a) => a.state === 'ready').length;
-    const availableCrew = s.crew.filter(isAvailable).length;
-    const injured = s.crew.filter((c) => c.health !== 'healthy').length;
-    const avgMorale = mean(s.crew.map((c) => c.morale));
-    const avgFatigue = mean(s.crew.map((c) => c.fatigue));
-
-    append(
-      this.readout,
-      statRow(
-        'AIRCRAFT READY',
-        `${readyAircraft} / ${s.aircraft.length}`,
-        readyAircraft / Math.max(1, s.aircraft.length) > 0.6 ? 'good' : 'warn',
-      ),
-      statRow('CREW AVAILABLE', `${availableCrew} / ${s.crew.length}`),
-      statRow('CREW MORALE', `${Math.round(avgMorale)}%`, avgMorale >= 60 ? 'good' : 'warn'),
-      statRow('CREW FATIGUE', `${Math.round(avgFatigue)}%`, avgFatigue <= 45 ? 'good' : 'bad'),
-      statRow('IN MEDICAL', String(injured), injured > 0 ? 'warn' : 'good'),
-      statRow('OPEN WORK ORDERS', String(s.workOrders.length), s.workOrders.length > 6 ? 'warn' : ''),
-    );
-
-    append(this.readout, div('divider'));
-    append(this.readout, div('section-title', t('READINESS BREAKDOWN')));
-    const components: [string, number][] = [
-      ['Aircraft', r.aircraft],
-      ['Crew', r.crew],
-      ['Maintenance', r.maintenance],
-      ['Engineering', r.engineering],
-      ['Operations', r.operations],
-      ['Logistics', r.logistics],
-      ['Weapons', r.weapons],
-      ['Medical', r.medical],
-      ['Command', r.command],
-    ];
-    const worst = Math.min(...components.map(([, v]) => v));
-    for (const [label, value] of components) {
-      const row = div('attr-row');
-      const lbl = span('attr-label', label);
-      if (value === worst) lbl.style.color = PAL.alert;
-      lbl.textContent = t(label);
-      append(row, lbl, bar(value, statusColor(value)), span('attr-value', String(Math.round(value))));
-      append(this.readout, row);
-    }
-    // The weakest component is 40% of overall readiness: name it and say
-    // what fixes it, right where the player is looking at the numbers.
-    const weakest = weakestLink(s);
-    const advice = div('weakest-link');
-    append(
-      advice,
-      div('wl-title', `${t('Weakest link')}: ${t(COMPONENT_LABELS[weakest.component])}`),
-      div('wl-body', t(COMPONENT_ADVICE[weakest.component])),
-    );
-    append(this.readout, advice);
-    append(
-      this.readout,
-      note(
-        'Overall readiness blends the weighted mean with the single worst component — one collapsed department drags the whole ship down.',
-      ),
-    );
-
-    append(this.readout, div('section-title', t('SUPPLIES')));
-    for (const [key, value] of Object.entries(s.supplies)) {
-      const row = div('attr-row');
-      append(
-        row,
-        span('attr-label', t(SUPPLY_LABELS[key as keyof typeof SUPPLY_LABELS]).toUpperCase()),
-        bar(value, statusColor(value)),
-        span('attr-value', String(Math.round(value))),
-      );
-      append(this.readout, row);
-    }
-
-    if (s.campaignEnd) {
-      append(this.readout, div('divider'));
-      const banner = div(
-        `outcome-banner ${s.campaignEnd.won ? 'good' : 'bad'}`,
-        s.campaignEnd.won ? t('CAMPAIGN WON') : t('COMMAND RELIEVED'),
-      );
-      append(this.readout, banner, note(s.campaignEnd.reason));
-    }
+    renderReadout(this.readout, this.gameState, () => this.openTasking());
   }
 
-  private renderBottomBar(): void {
-    const s = this.gameState;
-    clear(this.bottomMetrics);
-    const readyAircraft = s.aircraft.filter((a) => a.state === 'ready').length;
-    const metrics: [string, string][] = [
-      ['AIRCRAFT', `${readyAircraft}/${s.aircraft.length}`],
-      ['CREW', `${s.crew.filter(isAvailable).length}/${s.crew.length}`],
-      ['READINESS', `${Math.round(s.readiness.overall)}%`],
-      ['PRESTIGE', String(s.prestige)],
-      ['CREDITS', formatCredits(s.credits)],
-      ['SORTIES', String(s.sortieTotal)],
-    ];
-    for (const [k, v] of metrics) {
-      const m = div('metric');
-      append(m, span('k', t(k, 'metric')), span('v', v));
-      append(this.bottomMetrics, m);
-    }
+  private renderTooltip(): void {
+    renderHoverTooltip(this.tooltip, this.deckView.hover, this.gameState, this.lastMouse);
   }
 
   private renderTempo(): void {
@@ -965,86 +578,6 @@ export class App implements GameApi {
     if (this.roster.isOpen) this.roster.render();
     if (this.tasking.isOpen) this.tasking.render();
     if (this.council.isOpen) this.council.render();
-  }
-
-  /** Hover readout for rooms, crew and aircraft (spec section 16). */
-  private renderTooltip(): void {
-    const hover = this.deckView.hover;
-    if (!hover) {
-      this.tooltip.classList.remove('show');
-      return;
-    }
-    const s = this.gameState;
-    clear(this.tooltip);
-
-    const row = (k: string, v: string) => {
-      const r = div('tip-row');
-      append(r, span('', t(k)), span('', v));
-      return r;
-    };
-
-    if (hover.kind === 'room') {
-      const room = getRoom(hover.id);
-      const rs = s.rooms[room.id]!;
-      const occupants = s.crew.filter((c) => c.assignmentRoomId === room.id && isAvailable(c)).length;
-      const orders = s.workOrders.filter((w) => w.roomId === room.id).length;
-      append(this.tooltip, div('tip-title', t(room.name)));
-      append(
-        this.tooltip,
-        row('Personnel', `${occupants} / ${room.capacity}`),
-        row('Workload', `${Math.round(rs.workload)}%`),
-        row('Efficiency', `${Math.round(rs.efficiency)}%`),
-        row('Active jobs', String(orders)),
-        row('Equipment', `${Math.round(rs.condition)}%`),
-      );
-      const accent = DEPT_ACCENT[room.department];
-      if (accent) this.tooltip.style.borderColor = accent;
-    } else if (hover.kind === 'crew') {
-      const c = s.crew.find((x) => x.id === hover.id);
-      if (!c) {
-        this.tooltip.classList.remove('show');
-        return;
-      }
-      append(this.tooltip, div('tip-title', c.name));
-      append(
-        this.tooltip,
-        row('Rank', rank(c.rank).code),
-        row('Specialty', t(SPECIALTIES[c.primary].short)),
-        row('Skill', String(Math.round(primarySkill(c)))),
-        row('Status', t(statusLabel(c), 'status')),
-        row('Morale', `${Math.round(c.morale)}%`),
-        row('Fatigue', `${Math.round(c.fatigue)}%`),
-        row('Output', `${Math.round(effectiveness(c) * 100)}%`),
-      );
-      this.tooltip.style.borderColor = SPECIALTIES[c.primary].color;
-    } else {
-      const a = s.aircraft.find((x) => x.id === hover.id);
-      if (!a) {
-        this.tooltip.classList.remove('show');
-        return;
-      }
-      const type = aircraftType(a.typeId);
-      append(this.tooltip, div('tip-title', `${type.name} #${a.tail}`));
-      append(
-        this.tooltip,
-        row('Status', t(aircraftStatusText(a), 'aircraft')),
-        row('Readiness', `${Math.round(aircraftReadiness(a))}%`),
-        row('Engine', `${Math.round(a.systems.engine)}%`),
-        row('Avionics', `${Math.round(a.systems.avionics)}%`),
-        row('Airframe', `${Math.round(a.systems.airframe)}%`),
-        row('Fuel', `${Math.round(a.fuel)}%`),
-      );
-      this.tooltip.style.borderColor = PAL.aircraftAccent;
-    }
-
-    // Anchor near the cursor without leaving the stage.
-    const stage = this.tooltip.parentElement!.getBoundingClientRect();
-    const mx = this.lastMouse.x;
-    const my = this.lastMouse.y;
-    const tw = 230;
-    this.tooltip.style.left = `${Math.min(stage.width - tw - 10, mx + 14)}px`;
-    this.tooltip.style.top = `${Math.min(stage.height - 170, my + 12)}px`;
-    this.tooltip.classList.add('show');
   }
 
   private lastMouse = { x: 0, y: 0 };
@@ -1328,34 +861,15 @@ export class App implements GameApi {
     const show = this.deckView.currentShow();
     if (!show) return;
 
-    const banner = div('flightops-banner');
-    append(banner, div('fo-title', tf('FLIGHT OPERATIONS — DAY {n}', { n: report.day })));
-    const chips = div('fo-chips');
-    for (const { duty, n } of show.summary()) {
-      append(chips, span('fo-chip', `${t(DUTIES_BY_ID[duty as AircraftDuty].short, 'duty')} ×${n}`));
-    }
-    append(banner, chips);
-    const damaged = flights.filter((f) => f.damaged).length;
-    append(
-      banner,
-      div(
-        'fo-sub',
-        `${tf('{n} sorties launched and recovered', { n: flights.length })}${
-          damaged > 0 ? ` · ${tf('{n} came back with a fault', { n: damaged })}` : ''
-        }${show.extra > 0 ? ` · ${tf('{n} more not shown', { n: show.extra })}` : ''}`,
-      ),
-    );
-    const actions = div('fo-actions');
-    append(
-      actions,
-      button('SKIP', '', () => this.deckView.skipShow()),
-      button('DON’T PLAY EVERY DAY', '', () => {
-        setFlightOpsAuto(false);
+    const banner = flightOpsBanner(
+      report,
+      show,
+      () => this.deckView.skipShow(),
+      () => {
         this.toast('Flight operations will not play automatically. Watch them from the day’s summary.');
         this.deckView.skipShow();
-      }),
+      },
     );
-    append(banner, actions, div('fo-hint', t('Click the deck or press Enter to skip')));
     this.showBanner = banner;
     append(this.stageEl, banner);
   }
@@ -1445,10 +959,6 @@ export class App implements GameApi {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function statusClass(status: CarrierStatus): string {
-  return status === 'port' ? 'good' : status === 'onstation' ? 'gold' : '';
-}
-
 function panel(title: string): {
   root: HTMLDivElement;
   body: HTMLDivElement;
@@ -1474,36 +984,3 @@ function tempoTooltip(t: Tempo): string {
   }
 }
 
-
-function mean(values: number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((a, b) => a + b, 0) / values.length;
-}
-
-function hashSeed(text: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < text.length; i++) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 1;
-}
-
-const FLIGHT_OPS_KEY = 'deckmaster.flightops';
-
-/** Whether the day's flying plays automatically when the day ends. */
-function flightOpsAuto(): boolean {
-  try {
-    return localStorage.getItem(FLIGHT_OPS_KEY) !== 'off';
-  } catch {
-    return true;
-  }
-}
-
-function setFlightOpsAuto(on: boolean): void {
-  try {
-    localStorage.setItem(FLIGHT_OPS_KEY, on ? 'on' : 'off');
-  } catch {
-    // Without storage the choice lasts until the page is reloaded.
-  }
-}

@@ -1,7 +1,7 @@
 import type { CrewMember, GameState, PostDef } from '../core/types';
 import { portraitElement } from '../render/portrait';
 import type { GameApi } from './api';
-import { Modal } from './modals';
+import { Modal } from './modal';
 import { getRoom } from '../data/decks';
 import { DEPARTMENTS, SPECIALTIES } from '../data/specialties';
 import { postDef } from '../data/posts';

@@ -1,7 +1,7 @@
 import type { Aircraft, CrewMember, GameState } from '../core/types';
 import { portraitElement } from '../render/portrait';
 import type { GameApi } from './api';
-import { Modal } from './modals';
+import { Modal } from './modal';
 import { aircraftType } from '../data/aircraft';
 import { SPECIALTIES } from '../data/specialties';
 import { rank } from '../data/ranks';

@@ -1,8 +1,8 @@
-﻿# Deck Master â€” USS Resolute
+# Deck Master — USS Resolute
 
 A turn-based aircraft carrier command simulation. One turn is one in-game day.
 The ship itself is the interface: you navigate decks, inspect spaces, click on
-people, and decide. There is no HR screen â€” personnel management happens where
+people, and decide. There is no HR screen — personnel management happens where
 the personnel physically are.
 
 Built from `specifications/Deck_Master_Game_Specification.md` and
@@ -18,18 +18,28 @@ npm run dev        # http://localhost:5173
 ```bash
 npm run build      # typecheck + production bundle into dist/
 npm test           # simulation test suite (vitest)
+npm run lint       # ESLint, including the determinism rules for core/
 npm run verify     # headless playthrough + screenshots into shots/
 npm run balance    # objective cover each mission achieves, for tuning
 npm run balance:deployment   # what naive and careful players achieve in 30 days
 ```
 
 Open `/dev/art.html` on the dev server for an art sheet of every airframe
-sprite, spread and folded, at 1Ã— and 4Ã—.
+sprite, spread and folded, at 1× and 4×.
 
 `npm run verify` needs the preview server running (`npm run preview`). It drives
-the real UI in Chromium â€” starts a campaign, walks the decks, opens a room, jumps
+the real UI in Chromium — starts a campaign, walks the decks, opens a room, jumps
 to a crew member from the roster, accepts a mission, answers events and plays
-eight days â€” and fails on any console error.
+eight days — and fails on any console error.
+
+## Saves
+
+SAVE writes the campaign to browser storage, and the end of every day
+autosaves there; CONTINUE on the title screen picks it up. Browser storage
+holds one campaign per browser and goes with the site data, so EXPORT in the
+top bar also downloads the campaign as a JSON file, and LOAD FROM FILE on the
+title screen reads one back, from any browser. Files from older versions are
+migrated exactly as an older browser save would be (`core/save.ts`).
 
 ## Controls
 
@@ -37,8 +47,8 @@ eight days â€” and fails on any console error.
 | --- | --- |
 | Drag | Pan the deck |
 | Wheel | Zoom toward the cursor |
-| Shift+Wheel, â†‘ / â†“ | Change deck |
-| `1`â€“`8` | Jump to a deck |
+| Shift+Wheel, ↑ / ↓ | Change deck |
+| `1`–`8` | Jump to a deck |
 | Click | Inspect a room, person or aircraft |
 | `F` | Fit the whole deck in view |
 | `A` | Air tasking order |
@@ -50,10 +60,10 @@ eight days â€” and fails on any console error.
 
 ## Two campaigns
 
-**Deployment â€” 30 days** is the way in, and what the title screen offers
+**Deployment — 30 days** is the way in, and what the title screen offers
 first. The orders are fixed: complete two operations with Success or better
-inside thirty days. Three more objectives â€” prestige 175, crew morale 70%,
-readiness 60%, judged on the last day â€” each earn a star. The orders panel
+inside thirty days. Three more objectives — prestige 175, crew morale 70%,
+readiness 60%, judged on the last day — each earn a star. The orders panel
 in the sidebar shows the clock and every objective live; the deployment ends
 with a debrief, and a good one can carry on as an open career with the same
 ship. Sustained failure is judged faster than in a career (five days
@@ -78,13 +88,13 @@ Legendary standing or on sustained failure.
 
 A first deployment opens with a **guided first day** (`ui/tutorial.ts`):
 eight coach marks over the real game, each waiting until the player has
-actually done the thing â€” inspect an aircraft, go below, answer the day's
+actually done the thing — inspect an aircraft, go below, answer the day's
 decisions, take an operation, set the tasking, end the day. Shown once per
 browser, skippable at every step.
 
 ## The turn
 
-One turn is one in-game day, and **nothing advances on its own** â€” there is no
+One turn is one in-game day, and **nothing advances on its own** — there is no
 clock, no timer and no real-time pressure anywhere. The top bar shows the day
 and whether decisions are outstanding, not a time of day. Crew walking around
 the deck is presentation only: it animates toward wherever the last resolved
@@ -95,10 +105,10 @@ the state you left.
 ### The council
 
 The player is the commanding officer. Around the table sit ten department
-heads â€” a separate corps of senior officers, not the ship's company
+heads — a separate corps of senior officers, not the ship's company
 (`core/council.ts`, `ui/councilModal.ts`, key `C`):
 
-| Seat | Standing effect | Left to run the domain, theyâ€¦ |
+| Seat | Standing effect | Left to run the domain, they… |
 | --- | --- | --- |
 | Executive Officer | fewer accidents, better morale | set the watch bill; answer personnel and command decisions |
 | Air Boss | sortie capacity | set the tempo; answer flight deck decisions |
@@ -117,10 +127,10 @@ heads â€” a separate corps of senior officers, not the ship's company
 - **Advice.** On each decision card the seats responsible recommend a
   choice and say why. A competent officer usually picks what is genuinely
   best for the ship; otherwise they pick what their seat and temperament
-  favour â€” the Supply Officer the cheap option, a cautious XO the safe one.
+  favour — the Supply Officer the cheap option, a cautious XO the safe one.
   Deterministic for the day.
 - **Opinion** of the captain rises when their advice is taken and the ship
-  succeeds, falls â€” more each time in a row â€” when it is ignored. Below âˆ’40
+  succeeds, falls — more each time in a row — when it is ignored. Below −40
   an officer works at 60% effect. The portrait's expression shows it.
 - **Delegation** saves the clicks and costs the control: left alone, an
   officer misjudges some days (nearly two in five for an average officer,
@@ -255,7 +265,7 @@ the WATCH BILL panel, not one person at a time (`core/watch.ts`):
 
 | Policy | Stood down at | Back at | Most resting at once |
 | --- | --- | --- | --- |
-| Surge | never | 18% | â€” |
+| Surge | never | 18% | — |
 | Standard (default) | 82% fatigue | 30% | 15% of the department |
 | Three watches | 52% fatigue | 24% | 40% of the department |
 
@@ -275,7 +285,7 @@ port  ->  outbound  ->  on station  ->  inbound  ->  port
 Accepting a mission commits the ship: it sails, and the status bar under the
 top bar changes colour and reports which leg it is on and how long is left.
 Each mission declares `transitDays` (each way) and `days` (the work in the
-operating area), so the shortest operation is three days â€” one out, one on
+operating area), so the shortest operation is three days — one out, one on
 station, one home. `missionTotalDays()` is what the mission board displays.
 
 On passage the routine is lighter (70% of the tempo's fatigue, and the
@@ -283,7 +293,7 @@ operation's own strain only starts on station), so the transit is the chance
 to get a tired ship back on its feet. Auto-tasking rests the wing in transit
 rather than flying sorties that count for nothing. The alternative is
 WORK-UPS ON PASSAGE: training sorties on the way out rehearse the operation,
-each banking 0.5 progress for the first day on station, up to 12 â€” about two
+each banking 0.5 progress for the first day on station, up to 12 — about two
 full days of flying, paid for in aircrew fatigue and airframe hours. Work-ups
 spare the operation's **key assets** — the few airframes able to fly a duty
 it leans on (weight 0.5+), when there are four or fewer, such as the three
@@ -303,8 +313,8 @@ Three rules follow from this, and they are the point of the feature:
   recruitment are all refused unless the ship is alongside, and an order that
   falls due mid-deployment waits in port until the ship returns. A mission can
   only be accepted alongside, so you commit with the wing you have.
-- **Port is the recovery phase.** Alongside, fatigue recovery is 1.6Ã— and
-  maintenance runs 1.35Ã— faster with shore support. Coming alongside also
+- **Port is the recovery phase.** Alongside, fatigue recovery is 1.6× and
+  maintenance runs 1.35× faster with shore support. Coming alongside also
   reopens the mission board.
 
 The status appears in four places: the coloured bar under the top bar with
@@ -318,7 +328,7 @@ it completes. Moving it after makes a one-day passage home cost nothing.
 
 ### Posts, not compartments
 
-People are appointed to a **post** â€” the function they hold â€” and the ship
+People are appointed to a **post** — the function they hold — and the ship
 decides which of that post's compartments each of them works in today.
 
 The distinction is not cosmetic. A trade covers several spaces: avionics work
@@ -336,12 +346,12 @@ established strength:
 
 ```
 post-avionics   Avionics Maintenance   MAINT   avionics
-                d2-avionics Â· d2-maint1        9 billets
+                d2-avionics · d2-maint1        9 billets
 ```
 
 `stationCrew()` runs at the start of each turn and places every person in one
 of their post's spaces, weighting each space by the labour still outstanding
-there â€” so a trade concentrates on its backlog and spreads out when there is
+there — so a trade concentrates on its backlog and spreads out when there is
 none. It is deliberately deterministic, so a campaign still replays from its
 seed. `assignmentRoomId` survives as *where someone is today*, derived rather
 than chosen, which keeps the deck view, room activity and the event system
@@ -358,7 +368,7 @@ Two consequences worth knowing:
   backlog is worth more than a technician standing idle next door. Occupancy
   is clamped when it feeds room activity, so this cannot be exploited.
 
-The squadrons are posts too, but carry no billets of their own â€” they are
+The squadrons are posts too, but carry no billets of their own — they are
 established by the embarked air wing's seats rather than by the ship.
 
 Appointment works from either end, ranked by the same measure (`postFit()`,
@@ -369,8 +379,8 @@ there.
 ### The air tasking order
 
 The central decision of each turn is what the air wing does that day. Every
-airframe holds one duty â€” strike, CAP, recon, lift, training, deck alert,
-maintenance or stood down â€” and mission progress is computed from that tasking,
+airframe holds one duty — strike, CAP, recon, lift, training, deck alert,
+maintenance or stood down — and mission progress is computed from that tasking,
 not from a readiness score.
 
 Each mission declares which duties count toward it and how much. Disaster
@@ -383,7 +393,7 @@ crew in it.
 Two ceilings apply on top:
 
 - **Deck capacity.** Deck and Air departments turn the sorties, so their
-  effective output â€” and the operational tempo â€” cap how many aircraft can
+  effective output — and the operational tempo — cap how many aircraft can
   launch regardless of how many sit ready. Aircrew are excluded from this
   count: pilots fly aircraft, they do not move them.
 - **Suitability.** A transport on CAP contributes nothing at all.
@@ -392,13 +402,13 @@ Two ceilings apply on top:
 
 The panel (`A`, or `TASKING`) shows objective cover as a percentage: above 100%
 the mission finishes early, below it progress slows in proportion. `AUTO-ASSIGN`
-lays on a workable order; the interesting play is departing from it â€” holding
+lays on a workable order; the interesting play is departing from it — holding
 airframes on alert to shave accumulated risk, releasing tired ones to the shops,
 or flying training sorties on a quiet day to build the crew.
 
 `npm run balance` prints the cover a healthy ship achieves for every mission. A
 test enforces that no mission is beyond what a well-tasked ship can physically
-launch â€” a requirement the wing cannot reach is a wall, not a difficulty curve.
+launch — a requirement the wing cannot reach is a wall, not a difficulty curve.
 
 ### Named aircrew
 
@@ -412,9 +422,9 @@ Three consequences, and they are the point:
 
 - **Who flies changes the result.** `crewFactor()` turns the crew's
   effectiveness into a multiplier on the sortie, centred so that a capable,
-  rested crew is exactly Ã—1.00 and the swing is roughly âˆ’35%/+20%. The
-  commander carries most of the weight â€” a single-seat Super Hornet is all
-  pilot â€” and mission crew share the rest, so a Hawkeye flying with three of
+  rested crew is exactly ×1.00 and the swing is roughly −35%/+20%. The
+  commander carries most of the weight — a single-seat Super Hornet is all
+  pilot — and mission crew share the rest, so a Hawkeye flying with three of
   its five seats empty is markedly less use than a full one.
 - **No pilot, no sortie.** An airframe with an empty or unfit commander seat
   does not launch, does not occupy a deck cycle, and contributes nothing. This
@@ -423,7 +433,7 @@ Three consequences, and they are the point:
   to rotate a tired squadron.
 - **Repeated tasking wears crews out.** Flying costs its crew far more fatigue
   than a day in a shop, and `consecutiveFlyingDays` compounds it, so a wing
-  surged for a week stops performing. A tired crew is also 1.5Ã— more likely to
+  surged for a week stops performing. A tired crew is also 1.5× more likely to
   hurt itself. The squadrons are generated with an 18% spare margin over the
   seats so rotation is a real option rather than a choice between flying tired
   people and grounding airframes.
@@ -446,29 +456,29 @@ behind each ("Crew fatigue 58%, morale 61%, 4 away"). Each impact is the
 change in overall readiness had only that component moved, so the
 worst-component term is counted exactly (`explainReadiness` in
 `core/readiness.ts`). The summary and the SHIP STATUS panel also name the
-weakest link â€” 40% of overall readiness â€” and what fixes it.
+weakest link — 40% of overall readiness — and what fixes it.
 
 ## Buying things
 
 `DEVELOPMENT` has five tabs. Two rules make spending a decision rather than a
 shop:
 
-- **Nothing arrives instantly.** Every order carries a lead time of 2â€“8 days,
-  so a purchase is a bet on where the campaign will be next week â€” you cannot
+- **Nothing arrives instantly.** Every order carries a lead time of 2–8 days,
+  so a purchase is a bet on where the campaign will be next week — you cannot
   buy your way out of today's problem. Orders in transit show on every tab.
 - **Prestige gates the catalogue**, so reputation opens access to better
   airframes rather than only paying for them.
 
-**Aircraft** â€” eight airframe types, modelled on what a current US carrier air
+**Aircraft** — eight airframe types, modelled on what a current US carrier air
 wing flies. The embarked wing is F/A-18E and F/A-18F Super Hornets (VFA-14,
 VFA-151 and VFA-41), EA-18G Growlers (VAQ-133), E-2D Advanced Hawkeyes
 (VAW-117) and MH-60R/MH-60S Seahawks (HSM-71, HSC-14), with side numbers
-following the real convention â€” 100s and 300s for the strike fighter
+following the real convention — 100s and 300s for the strike fighter
 squadrons, 500s Growlers, 600s Hawkeyes, 610s HSC, 700s HSM.
 
 Two types are gated behind standing rather than money: the CMV-22B Osprey at
 250, which is the airframe that makes humanitarian and evacuation taskings
-comfortable, and the F-35C Lightning II at 500 â€” a Marine detachment is
+comfortable, and the F-35C Lightning II at 500 — a Marine detachment is
 assigned to carriers that have earned one, and like everything else it can
 only be taken on alongside. Each card shows sortie value, aircrew, fuel burn
 and which duties the type is actually good for, so the purchase connects
@@ -477,14 +487,14 @@ physical: the ship holds what the flight deck and hangar can spot
 (`AIRCRAFT_CAPACITY`, 26), counting orders in transit. If an airframe somehow
 arrives with nowhere to go, the order is refunded rather than silently lost.
 
-**Equipment** â€” ten items bought in quantity, each feeding exactly one
+**Equipment** — ten items bought in quantity, each feeding exactly one
 simulation term so the effect is legible:
 
 | Item | Feeds |
 | --- | --- |
-| Tow tractors | `sortieCapacity` â€” +1 sortie per day each |
+| Tow tractors | `sortieCapacity` — +1 sortie per day each |
 | Ground support / tool sets | `maintenanceSpeed` |
-| Spare module pool | `partsEfficiency` â€” stretches stores |
+| Spare module pool | `partsEfficiency` — stretches stores |
 | Flight deck safety equipment | `accidentRisk` |
 | Firefighting & rescue | `emergencyDamage` |
 | Improved berthing fittings | `restRate` |
@@ -497,13 +507,13 @@ call site so stacked purchases cannot break a system. Tests assert each one
 measurably changes the simulation.
 
 Note that `equipmentBonus` lives in `core/equipmentEffects.ts`, not
-`core/procurement.ts` â€” the simulation modules consume the lookups, while
+`core/procurement.ts` — the simulation modules consume the lookups, while
 procurement needs the parking layout from `core/aircraft.ts` at module scope.
 Merging them reintroduces an import cycle that crashes on load order.
 
 ## Languages
 
-The whole game plays in English or French â€” menus, room names, ranks, mission
+The whole game plays in English or French — menus, room names, ranks, mission
 briefings and every event. The `EN | FR` toggle sits in the top bar and on the
 title screen; switching is instant and re-labels the campaign you are already
 playing, including history already recorded. First visit follows the browser's
@@ -521,7 +531,7 @@ Translation lives in `src/i18n/`:
   rendered at display time. That is why switching language also re-labels a
   crew member's career history and today's event cards.
 - `tests/i18n.test.ts` walks the data modules and fails if any room, mission,
-  course or event is missing French text â€” so adding content in English only
+  course or event is missing French text — so adding content in English only
   breaks the build rather than shipping a half-translated screen. It also
   checks that every `{placeholder}` survives translation.
 
@@ -552,7 +562,7 @@ src/
     effects.ts     Declarative consequence interpreter
     training.ts    Courses, enrolment, mentoring
     economy.ts     Credits, prestige tiers, upgrades, recruitment
-    simulation.ts  endDay() â€” the whole authoritative turn
+    simulation.ts  endDay() — the whole authoritative turn
     save.ts        Serialise / restore
   data/        Content. Add here, not to core.
     decks.ts       8 decks, ~150 rooms, transcribed from the concept art
@@ -578,6 +588,13 @@ src/
     deployment.ts  Orders panel and debrief
     watchBill.ts   The watch bill panel
     councilModal.ts  The council page
+    app.ts         The shell: builds the screen, owns the state, the GameApi
+    titleScreen.ts Language, seed and campaign choice
+    shipStatus.ts  Status bar, deck caption, SHIP STATUS, legend, metrics
+    hoverTooltip.ts  Hover readout over the deck
+    flightOps.ts   The flight-operations banner and its auto-play setting
+    saveFile.ts    Campaigns as files: export and load
+    modal.ts       Shared modal shell; one file per modal beside it
 ```
 
 ### Two rules worth keeping
@@ -589,7 +606,9 @@ plus the same decisions replays exactly, which the test suite asserts.
 
 **Nothing in `core/` may call `Math.random()`.** Every draw comes from
 `Rng.stream(seed, day, label)`. A new random call with an ad-hoc seed will
-silently break replay determinism.
+silently break replay determinism. ESLint enforces this (`npm run lint`,
+also run in CI), together with no DOM globals in `core/`; the one exception
+is the fresh campaign seed in `newGame.ts`.
 
 ## Design notes
 
@@ -597,8 +616,8 @@ Some decisions in here are load-bearing and easy to undo by accident.
 
 **Readiness is not an average.** `computeReadiness` blends the weighted mean of
 nine components with the single worst component, 60/40. One collapsed
-department therefore drags the whole ship down â€” the specification's own worked
-example (94/91/88/85/43 â†’ ~65) falls out of this formula, and a test pins it.
+department therefore drags the whole ship down — the specification's own worked
+example (94/91/88/85/43 → ~65) falls out of this formula, and a test pins it.
 
 **Leadership is rolled independently of technical skill.** This is what makes
 promotion a real decision rather than a reward: a 94-technical / 32-leadership
@@ -641,7 +660,7 @@ the renderer smooths instead of dropping pixels.
 
 - **Decks** (`render/deckArt.ts`) are painted once per deck into an
   offscreen canvas and blitted: hull plating, bulkheads, doors onto the
-  passageway, and furniture chosen per compartment â€” racks in berthing,
+  passageway, and furniture chosen per compartment — racks in berthing,
   serving lines in the galley, turbines in the machinery spaces, reactors,
   magazines, tanks. The flight deck is painted as a flight deck: angled
   landing area, four arresting wires, foul line, bow catapults with jet
@@ -652,8 +671,8 @@ the renderer smooths instead of dropping pixels.
   under way, a pier with mooring lines alongside. Interior decks stay a
   cutaway on the dark page, with the decks above and below ghosted.
 - **Airframes** (`render/pixelArt.ts`) are blueprints in metres, rasterised
-  and shaded by rule â€” light from the top-left, one-pixel outline, contact
-  shadows â€” with a folded-wing variant for the hangar and squadron colours
+  and shaded by rule — light from the top-left, one-pixel outline, contact
+  shadows — with a folded-wing variant for the hangar and squadron colours
   on the fins. All eight types have art; the panels show the same sprite at
   an integer scale.
 - **Crew** wear their trade's jersey on the flight deck (yellow directors,
@@ -674,7 +693,7 @@ are no longer used by the game.
 
 ## Sound
 
-`ui/audio.ts` synthesises the ship with Web Audio â€” no sample files. The
+`ui/audio.ts` synthesises the ship with Web Audio — no sample files. The
 bed follows the camera: wind and sea on the flight deck, stronger under
 way; ventilation and machinery hum below, louder the deeper the deck. Over
 it: catapult launches while the wing flies on station, the ship's bell at
