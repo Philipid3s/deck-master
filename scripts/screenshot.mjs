@@ -408,7 +408,7 @@ if (!crewFr.includes('ATTRIBUTS')) problems.push('crew panel not translated');
 await page.keyboard.press('Escape');
 await new Promise((r) => setTimeout(r, 400));
 const eventFr = await text('.event-stack');
-if (eventFr && /(Approve|Deny|Continue operations)/.test(eventFr)) {
+if (eventFr && /\b(Approve|Deny|Continue operations)\b/.test(eventFr)) {
   problems.push('event choices still in English');
 }
 await shot('18-french-events');
